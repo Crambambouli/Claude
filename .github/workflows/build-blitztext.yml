@@ -40,9 +40,16 @@ jobs:
           SCP="scp -i /tmp/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
           TARGET="deployer@46.225.83.170:/var/www/downloads"
 
-          # Installer finden und umbenennen
-          INSTALLER=$(find voice-typer/dist -name "*.exe" -not -name "*ninstall*" | head -1)
+          # Installer finden (Ausgabe-Ordner: installer/)
+          INSTALLER=$(find voice-typer/installer -name "*.exe" -not -name "*ninstall*" | head -1)
           echo "Deploying: $INSTALLER"
+
+          if [ -z "$INSTALLER" ]; then
+            echo "ERROR: Kein Installer gefunden in voice-typer/installer/"
+            find voice-typer/installer -type f || echo "(Ordner leer oder nicht vorhanden)"
+            exit 1
+          fi
+
           $SCP "$INSTALLER" "$TARGET/blitztext-setup.exe"
 
           rm -f /tmp/deploy_key
