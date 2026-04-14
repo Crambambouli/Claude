@@ -6,6 +6,7 @@ import * as fs   from 'fs';
 import { exec }  from 'child_process';
 
 import { TrayManager }       from './tray';
+import { OverlayManager }    from './overlay';
 import { HotkeyManager }     from './hotkey';
 import { AudioRecorder }     from './audio-recorder';
 import { WhisperService, stripHallucinations } from './whisper';
@@ -26,7 +27,9 @@ if (!app.requestSingleInstanceLock()) {
 // ─── VoiceTyper App ──────────────────────────────────────────────────────────
 class VoiceTyper {
   private tray!:      TrayManager;
+  private overlay!:   OverlayManager;
   private hotkey!:    HotkeyManager;
+  private lastText  = '';
   private recorder!:  AudioRecorder;
   private whisper!:   WhisperService;
   private modes!:     ModeProcessor;
@@ -63,12 +66,19 @@ class VoiceTyper {
 
     this.tray = new TrayManager();
     this.tray.init({
-      mode:         s.hotkey as Mode ?? 'Normal',
-      onModeChange: (m) => this.onModeChange(m),
-      onSettings:   () => SettingsWindow.open(this.settings, this.recorder, this.whisper),
-      onExit:       () => this.quit(),
+      mode:          this.currentMode,
+      onModeChange:  (m) => this.onModeChange(m),
+      onSettings:    () => SettingsWindow.open(this.settings, this.recorder, this.whisper),
+      onToggleOverlay: () => this.overlay.toggle(),
+      onExit:        () => this.quit(),
     });
     this.tray.setMode(this.currentMode);
+
+    this.overlay = new OverlayManager();
+    this.overlay.init({
+      onModeChange:      (m) => this.onModeChange(m),
+      onToggleRecording: () => void this.handleHotkey(),
+    });
 
     this.hotkey = new HotkeyManager(s.hotkey || 'F8');
     this.hotkey.on('triggered', () => void this.handleHotkey());
@@ -184,6 +194,7 @@ class VoiceTyper {
       const result = await this.modes.process(cleaned, this.currentMode);
       logger.info(`Finaler Text: "${result.slice(0, 100)}"`);
 
+      this.lastText = result.slice(0, 120);
       this.clipboard.setText(result);
 
       if (this.targetWindowHwnd) {
@@ -205,12 +216,14 @@ class VoiceTyper {
   private onModeChange(mode: Mode): void {
     this.currentMode = mode;
     this.tray.setMode(mode);
+    this.overlay?.update(this.state, mode, this.lastText);
     logger.info(`Modus geändert: ${mode}`);
   }
 
   private setState(state: AppState): void {
     this.state = state;
     this.tray?.setState(state);
+    this.overlay?.update(state, this.currentMode, this.lastText);
   }
 
   private notify(title: string, body: string): void {
@@ -223,6 +236,7 @@ class VoiceTyper {
     logger.info('App wird beendet.');
     this.hotkey?.unregister();
     this.recorder?.destroy();
+    this.overlay?.destroy();
     this.tray?.destroy();
     app.quit();
   }

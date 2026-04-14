@@ -19,10 +19,11 @@ const STATE_TOOLTIP: Record<AppState, string> = {
 };
 
 interface TrayOptions {
-  mode:         Mode;
-  onModeChange: (m: Mode) => void;
-  onSettings:   () => void;
-  onExit:       () => void;
+  mode:            Mode;
+  onModeChange:    (m: Mode) => void;
+  onSettings:      () => void;
+  onToggleOverlay: () => void;
+  onExit:          () => void;
 }
 
 export class TrayManager {
@@ -77,6 +78,10 @@ export class TrayManager {
         })),
       },
       { type: 'separator' },
+      {
+        label: '▣  Overlay anzeigen / verstecken',
+        click: () => this.options.onToggleOverlay(),
+      },
       {
         label: '⚙  Einstellungen',
         click: () => this.options.onSettings(),
