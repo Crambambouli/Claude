@@ -1,5 +1,6 @@
 import * as fs   from 'fs';
 import * as path from 'path';
+import * as os   from 'os';
 import { app }   from 'electron';
 
 type Level = 'DEBUG' | 'INFO' | 'WARN' | 'ERROR';
@@ -10,9 +11,18 @@ class Logger {
 
   private ensureInit(): void {
     if (this.initialized) return;
+    this.initialized = true;
     try {
-      const dir  = app.getPath('userData');
-      this.logPath = path.join(dir, 'voice-typer.log');
+      // Fallback: %TEMP%\blitztext.log – immer schreibbar, leicht auffindbar
+      this.logPath = path.join(os.tmpdir(), 'blitztext.log');
+
+      // Sobald Electron bereit ist → userData-Verzeichnis bevorzugen
+      if (app.isReady()) {
+        const dir = app.getPath('userData');
+        fs.mkdirSync(dir, { recursive: true });
+        this.logPath = path.join(dir, 'voice-typer.log');
+      }
+
       // Alte Logs kürzen (max ~100 KB behalten)
       if (fs.existsSync(this.logPath)) {
         const stat = fs.statSync(this.logPath);
@@ -21,8 +31,7 @@ class Logger {
           fs.writeFileSync(this.logPath, content.slice(-100_000), 'utf8');
         }
       }
-    } catch { /* Vor app.ready */ }
-    this.initialized = true;
+    } catch { /* ignorieren */ }
   }
 
   private write(level: Level, msg: string, err?: unknown): void {

@@ -49,6 +49,8 @@ class VoiceTyper {
     // Verhindere, dass der App bei Fenster-Schließen beendet wird (Tray-App)
     app.on('window-all-closed', () => { /* noop – Tray-App läuft weiter */ });
 
+    logger.info(`Blitztext startet. Log: ${logger.getLogPath()}`);
+
     this.settings = new SettingsManager();
     this.settings.load();
 
