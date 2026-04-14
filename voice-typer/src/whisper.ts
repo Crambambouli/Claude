@@ -124,29 +124,35 @@ export class WhisperService {
 
   private resolveWhisperCmd(): string {
     if (this.whisperPath) {
-      // Wenn ein Verzeichnis angegeben wurde, hänge Binary-Name an
-      const stat = fs.existsSync(this.whisperPath)
-        ? fs.statSync(this.whisperPath)
-        : null;
+      const p = this.whisperPath;
+      // .py-Script → über python ausführen
+      if (p.endsWith('.py')) {
+        return process.platform === 'win32' ? 'python' : 'python3';
+      }
+      // Verzeichnis → Binary suchen
+      const stat = fs.existsSync(p) ? fs.statSync(p) : null;
       if (stat?.isDirectory()) {
-        const win = path.join(this.whisperPath, 'whisper.exe');
-        const nix = path.join(this.whisperPath, 'whisper');
+        const win = path.join(p, 'whisper.exe');
+        const nix = path.join(p, 'whisper');
         return fs.existsSync(win) ? win : nix;
       }
-      return this.whisperPath;
+      return p;
     }
     // Fallback: aus PATH
     return process.platform === 'win32' ? 'whisper.exe' : 'whisper';
   }
 
   private buildArgs(audioFile: string, outputDir: string): string[] {
+    // Wenn whisperPath ein .py-Script ist, als erstes Argument einfügen
+    const extra = this.whisperPath?.endsWith('.py') ? [this.whisperPath] : [];
+
     const args = [
+      ...extra,
       audioFile,
       '--model',                      this.model,
       '--output_format',              'txt',
       '--output_dir',                 outputDir,
       '--task',                       'transcribe',
-      // Verhindert Halluzinationen bei Stille / leisem Audio
       '--condition_on_previous_text', 'False',
       '--no_speech_threshold',        '0.6',
       '--logprob_threshold',          '-1.0',
