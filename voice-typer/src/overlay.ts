@@ -13,10 +13,6 @@ export class OverlayManager {
   private win:       BrowserWindow | null = null;
   private callbacks!: OverlayCallbacks;
   private ipcBound  = false;
-  private compact   = false;
-
-  private static readonly HEIGHT_NORMAL  = 240;
-  private static readonly HEIGHT_COMPACT = 34;
 
   init(callbacks: OverlayCallbacks): void {
     this.callbacks = callbacks;
@@ -83,15 +79,8 @@ export class OverlayManager {
       this.callbacks.onToggleRecording();
     });
 
-    ipcMain.on('overlay-hide', () => this.win?.hide());
-
-    ipcMain.on('overlay-toggle-compact', () => {
-      if (!this.win || this.win.isDestroyed()) return;
-      this.compact = !this.compact;
-      const h = this.compact ? OverlayManager.HEIGHT_COMPACT : OverlayManager.HEIGHT_NORMAL;
-      this.win.setSize(300, h, true);   // true = animate
-      this.win.webContents.send('set-compact', this.compact);
-    });
+    ipcMain.on('overlay-hide',     () => this.win?.hide());
+    ipcMain.on('overlay-minimize', () => this.win?.minimize());
   }
 
   private findFile(filename: string): string {

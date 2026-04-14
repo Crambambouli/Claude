@@ -42,12 +42,6 @@
   .title-bar .ctrl-btn:hover { color: #cdd6f4; }
   .title-bar .close-btn:hover { color: #f38ba8; }
 
-  /* Compact-Modus: alles außer Titelleiste ausblenden */
-  body.compact .record-area,
-  body.compact .mode-row,
-  body.compact .last-text-row,
-  body.compact .last-text-area { display: none; }
-
   /* ─── Record-Button ───────────────────────────────── */
   .record-area {
     display: flex;
@@ -178,7 +172,7 @@
 <div class="title-bar">
   <span class="name">🎤 VOICE TYPER</span>
   <div class="controls">
-    <button class="ctrl-btn" id="minBtn" title="Minimieren" onclick="toggleCompact()">─</button>
+    <button class="ctrl-btn" id="minBtn" title="Minimieren" onclick="minimizeOverlay()">─</button>
     <button class="ctrl-btn close-btn" title="Ausblenden" onclick="hideOverlay()">×</button>
   </div>
 </div>
@@ -278,14 +272,9 @@ function copyText() {
   }, 1500);
 }
 
-function toggleCompact() {
-  ipcRenderer.send('overlay-toggle-compact');
+function minimizeOverlay() {
+  ipcRenderer.send('overlay-minimize');
 }
-
-ipcRenderer.on('set-compact', (_, compact) => {
-  document.body.classList.toggle('compact', compact);
-  document.getElementById('minBtn').textContent = compact ? '□' : '─';
-});
 
 function hideOverlay() {
   ipcRenderer.send('overlay-hide');
