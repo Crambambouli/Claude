@@ -1,7 +1,7 @@
 /**
  * Generiert alle App-Icons:
  *  - idle.png / recording.png / processing.png  (Tray, farbige Blitze)
- *  - app.ico  (Installer / Taskleiste, goldgelber Blitz, 16+32 px)
+ *  - app.ico  (Installer / Taskleiste, goldgelber Blitz, 16+32+256 px)
  */
 'use strict';
 
@@ -56,22 +56,11 @@ function buildPng(size, pixelsFn) {
 }
 
 // ─── Blitz-Logo ──────────────────────────────────────────────────────────────
-// Scanlines im 32×32-Designraster [y, x_links, x_rechts].
-// Skaliert auf beliebige Größe (16, 32, 48 …).
-//
-//  Aufbau:
-//    Oberer Arm   : diagonal rechts-oben → links-mitte   (7 px breit)
-//    Querbalken   : breite horizontale Verbindung (Knick) (22 px breit)
-//    Unterer Arm  : diagonal rechts-mitte → links-unten  (7 px breit)
-//
 const BOLT_LINES = [
-  // oberer Arm (rechts oben → links mitte)
   [ 2, 14, 20], [ 3, 13, 19], [ 4, 12, 18], [ 5, 11, 17],
   [ 6, 10, 16], [ 7,  9, 15], [ 8,  8, 14], [ 9,  7, 13],
   [10,  6, 12], [11,  5, 11], [12,  4, 10],
-  // Querbalken (Knick – der charakteristische Zickzack)
   [13,  3, 24], [14,  3, 24],
-  // unterer Arm (rechts von Querbalken → links unten)
   [15, 16, 22], [16, 15, 21], [17, 14, 20], [18, 13, 19],
   [19, 12, 18], [20, 11, 17], [21, 10, 16], [22,  9, 15],
   [23,  8, 14], [24,  7, 13], [25,  6, 12], [26,  5, 11],
@@ -94,16 +83,17 @@ function makeBlitzPng(size, fg, bg) {
   return buildPng(size, (x, y) => px[y * size + x] ? fg : bg);
 }
 
-// ─── ICO-Builder – 2 Größen (16×16 + 32×32) ─────────────────────────────────
-function makeIco(png16, png32) {
-  const COUNT  = 2;
+// ─── ICO-Builder – 3 Größen (16×16 + 32×32 + 256×256) ───────────────────────
+function makeIco(png16, png32, png256) {
+  const COUNT  = 3;
   const DIRLEN = 16;
-  const offset16 = 6 + COUNT * DIRLEN;
-  const offset32 = offset16 + png16.length;
+  const offset16  = 6 + COUNT * DIRLEN;
+  const offset32  = offset16  + png16.length;
+  const offset256 = offset32  + png32.length;
 
   function dir(w, h, pngBuf, offset) {
     const d = Buffer.alloc(DIRLEN);
-    d[0] = w; d[1] = h;
+    d[0] = w; d[1] = h;  // ICO: 0 kodiert 256
     d.writeUInt16LE(1,  4);  // planes
     d.writeUInt16LE(32, 6);  // bpp
     d.writeUInt32LE(pngBuf.length, 8);
@@ -116,9 +106,13 @@ function makeIco(png16, png32) {
   header.writeUInt16LE(1,     2);  // ICO
   header.writeUInt16LE(COUNT, 4);
 
-  return Buffer.concat([header, dir(16, 16, png16, offset16),
-                                dir(32, 32, png32, offset32),
-                                png16, png32]);
+  return Buffer.concat([
+    header,
+    dir(16, 16, png16,  offset16),
+    dir(32, 32, png32,  offset32),
+    dir( 0,  0, png256, offset256),  // 0,0 = 256×256 im ICO-Format
+    png16, png32, png256,
+  ]);
 }
 
 // ─── Dateien schreiben ───────────────────────────────────────────────────────
@@ -139,13 +133,14 @@ for (const { name, fg } of tray) {
   console.log(`  ✓ ${name}`);
 }
 
-// App-Icon: goldgelber Blitz, 16 px + 32 px im ICO
-const blitz16 = makeBlitzPng(16, YELLOW, DARK);
-const blitz32 = makeBlitzPng(32, YELLOW, DARK);
+// App-Icon: goldgelber Blitz, 16 + 32 + 256 px im ICO
+const blitz16  = makeBlitzPng(16,  YELLOW, DARK);
+const blitz32  = makeBlitzPng(32,  YELLOW, DARK);
+const blitz256 = makeBlitzPng(256, YELLOW, DARK);
 fs.writeFileSync(path.join(OUT, 'blitz.png'), blitz32);
 console.log('  ✓ blitz.png  (32×32)');
 
-fs.writeFileSync(path.join(OUT, 'app.ico'), makeIco(blitz16, blitz32));
-console.log('  ✓ app.ico    (16×16 + 32×32, Blitz-Logo)');
+fs.writeFileSync(path.join(OUT, 'app.ico'), makeIco(blitz16, blitz32, blitz256));
+console.log('  ✓ app.ico    (16×16 + 32×32 + 256×256, Blitz-Logo)');
 
 console.log('Icons erstellt.');
