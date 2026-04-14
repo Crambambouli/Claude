@@ -136,7 +136,7 @@ internal fun StartScreenContent(
             TopAppBar(
                 title = {
                     Text(
-                        text  = "Puzzle Android",
+                        text  = "Puzzle Rose",
                         style = MaterialTheme.typography.titleLarge
                     )
                 },
