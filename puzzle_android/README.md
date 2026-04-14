@@ -99,17 +99,63 @@ app/build/outputs/apk/debug/app-debug.apk
 
 ## Run
 
-### On an emulator / device via ADB
+### Auf einem Tablet / Gerät installieren (empfohlen)
+
+#### Schritt 1 – Entwickleroptionen auf dem Tablet aktivieren
+
+1. Einstellungen → Über das Tablet → **Buildnummer** 7× antippen.
+2. Einstellungen → Entwickleroptionen → **USB-Debugging** einschalten.
+
+#### Schritt 2 – Tablet per USB verbinden
+
+Kabel einstecken → auf dem Tablet „**USB-Debugging zulassen**" bestätigen.
+
+#### Schritt 3a – Direkt aus Android Studio (einfachster Weg)
+
+1. `puzzle_android/` in Android Studio öffnen.
+2. Das Tablet erscheint automatisch in der Geräteleiste.
+3. ▶ **Run** drücken → App wird gebaut und direkt installiert.
+
+> Android Studio lädt das Gradle-Wrapper-JAR beim ersten Öffnen automatisch herunter – kein manuelles Setup nötig.
+
+#### Schritt 3b – Über die Kommandozeile (ADB)
+
+```bash
+# Im puzzle_android/-Verzeichnis:
+cp local.properties.template local.properties
+# sdk.dir in local.properties auf deinen Android-SDK-Pfad setzen
+
+./gradlew assembleDebug
+
+# Tablet per USB verbunden? Dann direkt installieren:
+adb install app/build/outputs/apk/debug/app-debug.apk
+```
+
+APK-Pfad nach dem Build:
+```
+app/build/outputs/apk/debug/app-debug.apk
+```
+
+#### Schritt 3c – APK-Datei manuell übertragen (kein USB-Kabel nötig)
+
+```bash
+./gradlew assembleDebug
+```
+
+Dann die Datei `app/build/outputs/apk/debug/app-debug.apk` per E-Mail, Google Drive oder ähnlichem aufs Tablet übertragen.  
+Auf dem Tablet: Einstellungen → **Installation aus unbekannten Quellen** für den verwendeten Dateimanager / Browser erlauben → APK tippen → installieren.
+
+### Auf einem Emulator
 
 ```bash
 ./gradlew installDebug
 ```
 
-### Via Android Studio
+### Via Android Studio (Emulator)
 
-1. Open the `puzzle_android/` folder in Android Studio.
-2. Select a device / emulator in the toolbar.
-3. Press **Run** (▶).
+1. `puzzle_android/` in Android Studio öffnen.
+2. Emulator oder Gerät in der Toolbar auswählen.
+3. ▶ **Run** drücken.
 
 ---
 
