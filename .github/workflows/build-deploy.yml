@@ -34,13 +34,19 @@ jobs:
           chmod 600 /tmp/deploy_key
 
           SCP="scp -i /tmp/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          SSH="ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null deployer@46.225.83.170"
           TARGET="deployer@46.225.83.170:/var/www/downloads"
 
+          # APK deployen
           $SCP puzzle_android/app/build/outputs/apk/debug/app-debug.apk \
                $TARGET/puzzle_android.apk
 
+          # Landing page deployen
           $SCP server-setup/downloads-page/index.html \
                $TARGET/index.html
+
+          # Nginx neu laden (falls nötig)
+          $SSH "sudo nginx -t && sudo systemctl reload nginx" || true
 
           rm -f /tmp/deploy_key
           echo "Deployed at $(date)"
