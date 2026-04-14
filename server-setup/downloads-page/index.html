@@ -17,6 +17,7 @@
       --text:      #e2e2f0;
       --muted:     #6b6b90;
       --android:   #3ddc84;
+      --windows:   #4fc3f7;
       --warn:      #fbbf24;
     }
 
@@ -61,6 +62,7 @@
       display: flex; align-items: center; justify-content: center; font-size: 18px;
     }
     .category-icon.android { background: rgba(61,220,132,0.15); }
+    .category-icon.windows { background: rgba(79,195,247,0.15); }
     .category-title {
       font-size: 13px; font-weight: 700;
       text-transform: uppercase; letter-spacing: 1.2px; color: var(--muted);
@@ -92,8 +94,9 @@
     .app-card .info p  { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 10px; }
     .badges { display: flex; gap: 6px; flex-wrap: wrap; }
     .badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; letter-spacing: 0.3px; }
-    .badge.android { background: rgba(61,220,132,0.15); color: var(--android); border: 1px solid rgba(61,220,132,0.25); }
-    .badge.size    { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
+    .badge.android  { background: rgba(61,220,132,0.15); color: var(--android); border: 1px solid rgba(61,220,132,0.25); }
+    .badge.windows  { background: rgba(79,195,247,0.15); color: var(--windows); border: 1px solid rgba(79,195,247,0.25); }
+    .badge.size     { background: var(--surface2); color: var(--muted); border: 1px solid var(--border); }
 
     /* ── Buttons ── */
     .btn {
@@ -110,6 +113,11 @@
     }
     .btn-android:hover { box-shadow: 0 6px 24px rgba(74,222,128,0.45); }
     .btn-desktop { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-windows {
+      background: linear-gradient(135deg, #0078d4, #005a9e);
+      color: #fff; box-shadow: 0 4px 16px rgba(0,120,212,0.3);
+    }
+    .btn-windows:hover { box-shadow: 0 6px 24px rgba(0,120,212,0.45); }
 
     /* ── Installation Guide (Android) ── */
     .install-guide {
@@ -263,7 +271,17 @@ const APPS = [
     icon:        '🧩',
     description: 'Klassisches Schiebepuzzle mit modernem Compose-UI.',
     category:    'Android',
-    apk:         'puzzle_android.apk',
+    file:        'puzzle_android.apk',
+    type:        'android',
+  },
+  {
+    id:          'blitztext',
+    name:        'Blitztext',
+    icon:        '⚡',
+    description: 'Sprache blitzschnell in Text umwandeln. F8 drücken, sprechen, fertig – mit lokalem Whisper STT und Claude KI-Modi.',
+    category:    'Windows',
+    file:        'blitztext-setup.exe',
+    type:        'windows',
   },
 ];
 // ═══════════════════════════════════════════════
@@ -279,9 +297,14 @@ const dlIcon = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none"
 
 /* ── App-Card ── */
 function appCard(app) {
-  const btn = isAndroid
-    ? `<a href="${app.apk}" class="btn btn-android">${dlIcon} Installieren</a>`
-    : `<a href="${app.apk}" class="btn btn-desktop">${dlIcon} APK herunterladen</a>`;
+  let btn;
+  if (app.type === 'android') {
+    btn = isAndroid
+      ? `<a href="${app.file}" class="btn btn-android">${dlIcon} Installieren</a>`
+      : `<a href="${app.file}" class="btn btn-desktop">${dlIcon} APK herunterladen</a>`;
+  } else {
+    btn = `<a href="${app.file}" class="btn btn-windows">${dlIcon} Herunterladen</a>`;
+  }
 
   return `
   <div class="app-card">
@@ -290,7 +313,7 @@ function appCard(app) {
       <h3>${app.name}</h3>
       <p>${app.description}</p>
       <div class="badges">
-        <span class="badge android">${app.category}</span>
+        <span class="badge ${app.type}">${app.category}</span>
         <span class="badge size" id="size-${app.id}">…</span>
       </div>
     </div>
@@ -300,8 +323,8 @@ function appCard(app) {
 
 /* ── Kategorie ── */
 function category(name, apps) {
-  const icons   = { Android: '🤖' };
-  const classes = { Android: 'android' };
+  const icons   = { Android: '🤖', Windows: '🪟' };
+  const classes = { Android: 'android', Windows: 'windows' };
   return `
   <section class="category">
     <div class="category-header">
@@ -409,7 +432,7 @@ document.getElementById('root').innerHTML =
 
 /* ── Dateigrößen ── */
 APPS.forEach(app => {
-  fetch(app.apk, { method: 'HEAD' })
+  fetch(app.file, { method: 'HEAD' })
     .then(r => {
       const el    = document.getElementById('size-' + app.id);
       const bytes = r.headers.get('content-length');

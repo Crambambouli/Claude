@@ -1,0 +1,47 @@
+name: Build & Deploy Blitztext (Windows)
+
+on:
+  push:
+    branches: [main]
+    paths: ['voice-typer/**']
+  workflow_dispatch:
+
+jobs:
+  build-blitztext:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: voice-typer/package-lock.json
+
+      - name: Build Blitztext installer
+        run: |
+          cd voice-typer
+          npm ci
+          npm run package
+
+      - name: Deploy to Hetzner
+        env:
+          SSH_KEY: ${{ secrets.HETZNER_SSH_KEY }}
+        shell: bash
+        run: |
+          echo "$SSH_KEY" > /tmp/deploy_key
+          chmod 600 /tmp/deploy_key
+
+          SCP="scp -i /tmp/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
+          TARGET="deployer@46.225.83.170:/var/www/downloads"
+
+          # Installer finden und umbenennen
+          INSTALLER=$(find voice-typer/dist -name "*.exe" -not -name "*ninstall*" | head -1)
+          echo "Deploying: $INSTALLER"
+          $SCP "$INSTALLER" "$TARGET/blitztext-setup.exe"
+
+          rm -f /tmp/deploy_key
+          echo "Deployed at $(date)"
