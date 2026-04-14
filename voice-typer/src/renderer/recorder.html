@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>VoiceTyper – Recorder (internal)</title>
+</head>
+<body>
+<script>
+'use strict';
+/* eslint-disable */
+// Internes Fenster mit nodeIntegration: true, contextIsolation: false
+const { ipcRenderer } = require('electron');
+
+const SAMPLE_RATE       = 16000;   // Hz – optimal für Whisper
+const SILENCE_THRESHOLD = 0.007;   // RMS-Schwellwert
+const SILENCE_TIMEOUT   = 30_000;  // 30 s Stille → Auto-Stop
+const MAX_DURATION      = 120_000; // 2 min Maximal-Aufnahme
+
+let audioCtx       = null;
+let processor      = null;
+let sourceNode     = null;
+let micStream      = null;
+let audioSamples   = [];
+let isRecording    = false;
+let silenceTimer   = null;
+let maxTimer       = null;
+
+// ─── Start Recording ────────────────────────────────────────────────────────
+ipcRenderer.on('start-recording', async (_e, deviceId) => {
+  if (isRecording) {
+    ipcRenderer.send('recorder-error', 'Aufnahme läuft bereits');
+    return;
+  }
+  audioSamples = [];
+  try {
+    const constraints = {
+      audio: deviceId
+        ? { deviceId: { exact: deviceId }, echoCancellation: false, noiseSuppression: false }
+        : { echoCancellation: false, noiseSuppression: false },
+      video: false,
+    };
+    micStream = await navigator.mediaDevices.getUserMedia(constraints);
+    audioCtx  = new AudioContext({ sampleRate: SAMPLE_RATE });
+    sourceNode = audioCtx.createMediaStreamSource(micStream);
+
+    // ScriptProcessorNode: PCM-Float32-Daten abhören
+    processor = audioCtx.createScriptProcessor(4096, 1, 1);
+    processor.onaudioprocess = (e) => {
+      if (!isRecording) return;
+      const input = e.inputBuffer.getChannelData(0);
+      audioSamples.push(new Float32Array(input));
+
+      // RMS-Berechnung für Stille-Erkennung
+      let sum = 0;
+      for (let i = 0; i < input.length; i++) sum += input[i] * input[i];
+      const rms = Math.sqrt(sum / input.length);
+
+      if (rms > SILENCE_THRESHOLD) {
+        if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
+      } else if (!silenceTimer) {
+        silenceTimer = setTimeout(() => {
+          ipcRenderer.send('recording-silence-timeout');
+          doStop();
+        }, SILENCE_TIMEOUT);
+      }
+    };
+
+    sourceNode.connect(processor);
+    processor.connect(audioCtx.destination);
+    isRecording = true;
+
+    maxTimer = setTimeout(() => {
+      console.warn('Max-Aufnahmedauer erreicht – Auto-Stop');
+      doStop();
+    }, MAX_DURATION);
+
+    ipcRenderer.send('recorder-started');
+
+  } catch (err) {
+    isRecording = false;
+    ipcRenderer.send('recorder-error', err.message || String(err));
+  }
+});
+
+// ─── Stop Recording ─────────────────────────────────────────────────────────
+ipcRenderer.on('stop-recording', () => doStop());
+
+function doStop() {
+  if (!isRecording) return;
+  isRecording = false;
+
+  if (silenceTimer) { clearTimeout(silenceTimer); silenceTimer = null; }
+  if (maxTimer)     { clearTimeout(maxTimer);     maxTimer     = null; }
+
+  try { processor?.disconnect();  } catch {}
+  try { sourceNode?.disconnect(); } catch {}
+  try { micStream?.getTracks().forEach(t => t.stop()); } catch {}
+  try { audioCtx?.close();        } catch {}
+
+  processor = sourceNode = micStream = audioCtx = null;
+
+  const wav = buildWAV(audioSamples, SAMPLE_RATE);
+  audioSamples = [];
+  ipcRenderer.send('recording-complete', wav);
+}
+
+// ─── WAV-Builder ─────────────────────────────────────────────────────────────
+function buildWAV(chunks, sampleRate) {
+  let total = 0;
+  for (const c of chunks) total += c.length;
+  if (total === 0) return Buffer.alloc(0);
+
+  const pcm16 = new Int16Array(total);
+  let off = 0;
+  for (const c of chunks) {
+    for (let i = 0; i < c.length; i++) {
+      const s = Math.max(-1, Math.min(1, c[i]));
+      pcm16[off++] = s < 0 ? s * 0x8000 : s * 0x7fff;
+    }
+  }
+
+  const dataSize = pcm16.length * 2;
+  const buf      = Buffer.alloc(44 + dataSize);
+
+  buf.write('RIFF', 0, 'ascii');
+  buf.writeUInt32LE(36 + dataSize, 4);
+  buf.write('WAVE', 8, 'ascii');
+  buf.write('fmt ', 12, 'ascii');
+  buf.writeUInt32LE(16, 16);               // Chunk-Größe
+  buf.writeUInt16LE(1, 20);               // PCM
+  buf.writeUInt16LE(1, 22);               // Mono
+  buf.writeUInt32LE(sampleRate, 24);      // Sample-Rate
+  buf.writeUInt32LE(sampleRate * 2, 28);  // Byte-Rate
+  buf.writeUInt16LE(2, 32);               // Block-Align
+  buf.writeUInt16LE(16, 34);              // Bits per Sample
+  buf.write('data', 36, 'ascii');
+  buf.writeUInt32LE(dataSize, 40);
+
+  for (let i = 0; i < pcm16.length; i++) {
+    buf.writeInt16LE(pcm16[i], 44 + i * 2);
+  }
+  return buf;
+}
+
+// ─── Audio-Geräte abfragen ──────────────────────────────────────────────────
+ipcRenderer.on('get-audio-devices', async () => {
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const audioIn = devices
+      .filter(d => d.kind === 'audioinput')
+      .map(d => ({ id: d.deviceId, label: d.label || `Mikrofon (${d.deviceId.slice(0, 8)})` }));
+    ipcRenderer.send('audio-devices-result', audioIn);
+  } catch {
+    ipcRenderer.send('audio-devices-result', []);
+  }
+});
+</script>
+</body>
+</html>

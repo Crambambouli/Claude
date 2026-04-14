@@ -1,0 +1,9 @@
+node_modules/
+dist/
+release/
+*.log
+*.map
+.DS_Store
+assets/icons/*.png
+assets/icons/*.ico
+config.json
