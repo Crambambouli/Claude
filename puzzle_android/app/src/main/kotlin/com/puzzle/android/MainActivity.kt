@@ -13,7 +13,8 @@ import com.puzzle.android.viewmodel.MainViewModelFactory
 class MainActivity : ComponentActivity() {
 
     private val viewModel: MainViewModel by viewModels {
-        MainViewModelFactory((application as PuzzleApplication).repository)
+        val app = application as PuzzleApplication
+        MainViewModelFactory(app.repository, app.updateChecker)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -49,7 +49,13 @@ fun PuzzleAndroidTheme(
     val colorScheme = when {
         dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
             val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            // runCatching: some OEM ROMs (MIUI, One UI) ship API 31 without
+            // the full system_accent* color resources → falls back to static scheme
+            runCatching {
+                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+            }.getOrElse {
+                if (darkTheme) DarkColorScheme else LightColorScheme
+            }
         }
         darkTheme -> DarkColorScheme
         else      -> LightColorScheme

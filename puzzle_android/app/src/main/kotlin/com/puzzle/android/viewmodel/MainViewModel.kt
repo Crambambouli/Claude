@@ -6,6 +6,9 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.puzzle.android.data.db.ExampleEntity
 import com.puzzle.android.data.repository.ExampleRepository
+import com.puzzle.android.data.update.UpdateChecker
+import com.puzzle.android.data.update.UpdateInfo
+import java.io.File
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -27,17 +30,27 @@ sealed interface HealthStatus {
 }
 
 data class MainUiState(
-    val healthStatus: HealthStatus = HealthStatus.Idle
+    val healthStatus: HealthStatus = HealthStatus.Idle,
+    val updateInfo: UpdateInfo? = null,
+    val isDownloadingUpdate: Boolean = false,
+    val pendingInstallFile: File? = null
 )
 
 // ──────────────────────────────────────────────────────────────────────────────
 // ViewModel
 // ──────────────────────────────────────────────────────────────────────────────
 
-class MainViewModel(private val repository: ExampleRepository) : ViewModel() {
+class MainViewModel(
+    private val repository: ExampleRepository,
+    private val updateChecker: UpdateChecker? = null
+) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+
+    init {
+        if (updateChecker != null) checkForUpdate()
+    }
 
     /** Live list of locally stored examples (emitted by Room). */
     val examples: StateFlow<List<ExampleEntity>> = repository.examples
@@ -95,6 +108,28 @@ class MainViewModel(private val repository: ExampleRepository) : ViewModel() {
         }
     }
 
+    private fun checkForUpdate() {
+        viewModelScope.launch {
+            val info = updateChecker?.checkForUpdate()
+            if (info != null) _uiState.update { it.copy(updateInfo = info) }
+        }
+    }
+
+    /** Downloads the update APK; sets [MainUiState.pendingInstallFile] when ready. */
+    fun downloadUpdate() {
+        if (_uiState.value.isDownloadingUpdate) return
+        _uiState.update { it.copy(isDownloadingUpdate = true) }
+        viewModelScope.launch {
+            val file = updateChecker?.downloadApk()
+            _uiState.update { it.copy(isDownloadingUpdate = false, pendingInstallFile = file) }
+        }
+    }
+
+    /** Called after the install intent has been launched to reset install state. */
+    fun onInstallConsumed() {
+        _uiState.update { it.copy(pendingInstallFile = null, updateInfo = null) }
+    }
+
     companion object {
         private const val TAG = "MainViewModel"
     }
@@ -105,7 +140,8 @@ class MainViewModel(private val repository: ExampleRepository) : ViewModel() {
 // ──────────────────────────────────────────────────────────────────────────────
 
 class MainViewModelFactory(
-    private val repository: ExampleRepository
+    private val repository: ExampleRepository,
+    private val updateChecker: UpdateChecker? = null
 ) : ViewModelProvider.Factory {
 
     @Suppress("UNCHECKED_CAST")
@@ -113,6 +149,6 @@ class MainViewModelFactory(
         require(modelClass.isAssignableFrom(MainViewModel::class.java)) {
             "Unknown ViewModel class: ${modelClass.name}"
         }
-        return MainViewModel(repository) as T
+        return MainViewModel(repository, updateChecker) as T
     }
 }

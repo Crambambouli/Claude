@@ -5,6 +5,7 @@ import android.util.Log
 import com.puzzle.android.data.api.ApiClient
 import com.puzzle.android.data.db.AppDatabase
 import com.puzzle.android.data.repository.ExampleRepository
+import com.puzzle.android.data.update.UpdateChecker
 
 /**
  * Application entry point.
@@ -24,6 +25,10 @@ class PuzzleApplication : Application() {
             apiService  = ApiClient.apiService,
             exampleDao  = database.exampleDao()
         )
+    }
+
+    val updateChecker: UpdateChecker by lazy {
+        UpdateChecker(applicationContext)
     }
 
     override fun onCreate() {

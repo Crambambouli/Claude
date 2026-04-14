@@ -47,11 +47,16 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import android.content.Intent
+import androidx.compose.material.icons.filled.SystemUpdate
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.core.content.FileProvider
 import com.puzzle.android.BuildConfig
 import com.puzzle.android.R
 import com.puzzle.android.data.db.ExampleEntity
@@ -81,23 +86,38 @@ object StartScreenTags {
 fun StartScreen(viewModel: MainViewModel) {
     val uiState  by viewModel.uiState.collectAsState()
     val examples by viewModel.examples.collectAsState()
+    val context  = LocalContext.current
+
+    // Trigger system package-installer when APK download is complete
+    LaunchedEffect(uiState.pendingInstallFile) {
+        val file = uiState.pendingInstallFile ?: return@LaunchedEffect
+        val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+        context.startActivity(intent)
+        viewModel.onInstallConsumed()
+    }
 
     StartScreenContent(
-        uiState    = uiState,
-        examples   = examples,
-        onCheckHealth  = viewModel::checkHealth,
-        onAddExample   = { viewModel.saveExample(UUID.randomUUID().toString()) },
-        onClearExamples = viewModel::clearExamples
+        uiState         = uiState,
+        examples        = examples,
+        onCheckHealth   = viewModel::checkHealth,
+        onAddExample    = { viewModel.saveExample(UUID.randomUUID().toString()) },
+        onClearExamples = viewModel::clearExamples,
+        onDownloadUpdate = viewModel::downloadUpdate
     )
 }
 
 @Composable
 internal fun StartScreenContent(
-    uiState         : MainUiState,
-    examples        : List<ExampleEntity>,
-    onCheckHealth   : () -> Unit,
-    onAddExample    : () -> Unit,
-    onClearExamples : () -> Unit
+    uiState          : MainUiState,
+    examples         : List<ExampleEntity>,
+    onCheckHealth    : () -> Unit,
+    onAddExample     : () -> Unit,
+    onClearExamples  : () -> Unit,
+    onDownloadUpdate : () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope             = rememberCoroutineScope()
@@ -143,6 +163,9 @@ internal fun StartScreenContent(
             contentPadding      = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            if (uiState.updateInfo != null) {
+                item { UpdateBanner(uiState, onDownloadUpdate) }
+            }
             item { HealthCheckSection(uiState, onCheckHealth) }
             item { ExamplesHeader(examples.size, onAddExample, onClearExamples) }
 
@@ -170,6 +193,57 @@ internal fun StartScreenContent(
 // ─────────────────────────────────────────────────────────────────────────────
 // Sub-composables
 // ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun UpdateBanner(uiState: MainUiState, onDownloadUpdate: () -> Unit) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors   = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
+        )
+    ) {
+        Row(
+            modifier            = Modifier.padding(16.dp),
+            verticalAlignment   = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Icon(
+                imageVector        = Icons.Default.SystemUpdate,
+                contentDescription = null,
+                tint               = MaterialTheme.colorScheme.onSecondaryContainer
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text  = "Update verfügbar",
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+                Text(
+                    text  = "Version ${uiState.updateInfo?.versionName}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            }
+            if (uiState.isDownloadingUpdate) {
+                CircularProgressIndicator(
+                    modifier    = Modifier.size(24.dp),
+                    strokeWidth = 2.dp,
+                    color       = MaterialTheme.colorScheme.onSecondaryContainer
+                )
+            } else {
+                FilledTonalButton(
+                    onClick  = onDownloadUpdate,
+                    colors   = ButtonDefaults.filledTonalButtonColors(
+                        containerColor = MaterialTheme.colorScheme.secondary,
+                        contentColor   = MaterialTheme.colorScheme.onSecondary
+                    )
+                ) {
+                    Text("Aktualisieren")
+                }
+            }
+        }
+    }
+}
 
 @Composable
 private fun HealthCheckSection(
