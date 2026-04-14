@@ -1,14 +1,10 @@
 package com.puzzle.android.ui.theme
 
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
 
 private val LightColorScheme = lightColorScheme(
     primary          = PrimaryLight,
@@ -35,31 +31,18 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 /**
- * Top-level Material Design 3 theme for the Puzzle Android app.
+ * Top-level Material Design 3 theme for Puzzle Rose.
  *
- * On Android 12+ (API 31) dynamic colour is used when [dynamicColor] is true.
+ * Uses a static colour scheme (light/dark) for maximum OEM compatibility.
  * Light / dark switching follows the system setting automatically.
  */
 @Composable
 fun PuzzleAndroidTheme(
     darkTheme    : Boolean = isSystemInDarkTheme(),
-    dynamicColor : Boolean = true,
+    dynamicColor : Boolean = false,
     content      : @Composable () -> Unit
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            // runCatching: some OEM ROMs (MIUI, One UI) ship API 31 without
-            // the full system_accent* color resources → falls back to static scheme
-            runCatching {
-                if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-            }.getOrElse {
-                if (darkTheme) DarkColorScheme else LightColorScheme
-            }
-        }
-        darkTheme -> DarkColorScheme
-        else      -> LightColorScheme
-    }
+    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
 
     MaterialTheme(
         colorScheme = colorScheme,
