@@ -46,10 +46,17 @@ public class VTSetFG {
     [DllImport("user32.dll")]
     [return: MarshalAs(UnmanagedType.Bool)]
     public static extern bool ShowWindow(IntPtr hwnd, int cmd);
+    [DllImport("user32.dll")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    public static extern bool IsIconic(IntPtr hwnd);
 }
 '@ -ErrorAction SilentlyContinue
 $hwnd = [IntPtr]${hwnd}
-[VTSetFG]::ShowWindow($hwnd, 9) | Out-Null
+if ([VTSetFG]::IsIconic($hwnd)) {
+    [VTSetFG]::ShowWindow($hwnd, 9) | Out-Null  # SW_RESTORE – nur wenn minimiert
+} else {
+    [VTSetFG]::ShowWindow($hwnd, 5) | Out-Null  # SW_SHOW – Größe/Position unangetastet
+}
 [VTSetFG]::SetForegroundWindow($hwnd) | Out-Null
 `.trim();
 
