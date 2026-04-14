@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Puzzle Android</string>
+    <string name="health_check_button">Check API Health</string>
+    <string name="health_status_ok">API is healthy</string>
+    <string name="health_status_error">API unreachable</string>
+    <string name="loading">Checking…</string>
+    <string name="examples_section">Saved Examples</string>
+    <string name="no_examples">No examples saved yet.</string>
+    <string name="retry">Retry</string>
+    <string name="version_label">v%1$s</string>
+</resources>
