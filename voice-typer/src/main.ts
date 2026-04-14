@@ -3,6 +3,7 @@ import {
 } from 'electron';
 import * as path from 'path';
 import * as fs   from 'fs';
+import { exec }  from 'child_process';
 
 import { TrayManager }       from './tray';
 import { HotkeyManager }     from './hotkey';
@@ -132,6 +133,7 @@ class VoiceTyper {
       logger.info(`Ziel-Fenster: ${win?.title ?? 'unbekannt'} [${win?.processName ?? ''}]`);
 
       this.setState('recording');
+      beep(880, 80);   // hoher Ton = Aufnahme START
       await this.recorder.start(this.settings.get('audioDevice') || undefined);
     } catch (err) {
       logger.error('Aufnahme konnte nicht gestartet werden.', err);
@@ -141,6 +143,7 @@ class VoiceTyper {
   }
 
   private async stopAndProcess(): Promise<void> {
+    beep(440, 80);   // tiefer Ton = Aufnahme STOP
     this.setState('processing');
     try {
       const audio = await this.recorder.stop();
@@ -290,6 +293,15 @@ app.whenReady().then(async () => {
     app.quit();
   }
 });
+
+// ─── Audio-Feedback ──────────────────────────────────────────────────────────
+function beep(freq: number, durationMs: number): void {
+  if (process.platform === 'win32') {
+    exec(`powershell -Command "[console]::beep(${freq},${durationMs})"`,
+      (err) => { if (err) logger.debug('Beep fehlgeschlagen: ' + err.message); }
+    );
+  }
+}
 
 process.on('uncaughtException', (err) => {
   logger.error('Uncaught exception', err);
