@@ -7,7 +7,7 @@ import * as fs   from 'fs';
 import { TrayManager }       from './tray';
 import { HotkeyManager }     from './hotkey';
 import { AudioRecorder }     from './audio-recorder';
-import { WhisperService, HALLUCINATION_PATTERN } from './whisper';
+import { WhisperService, stripHallucinations } from './whisper';
 import { ModeProcessor }     from './modes';
 import { ClipboardManager }  from './clipboard-manager';
 import { SettingsManager }   from './settings';
@@ -167,14 +167,18 @@ class VoiceTyper {
         return;
       }
 
-      // Halluzinations-Filter: bekannte Whisper-Phantomtexte abfangen
-      if (HALLUCINATION_PATTERN.test(transcript.trim())) {
-        logger.warn(`Halluzination erkannt, verwerfe: "${transcript.trim()}"`);
+      // Halluzinations-Filter: bekannte Phantom-Phrasen herausschneiden
+      const cleaned = stripHallucinations(transcript);
+      if (!cleaned) {
+        logger.warn(`Nach Halluzinations-Filter leer, verwerfe: "${transcript.trim()}"`);
         this.setState('idle');
         return;
       }
+      if (cleaned !== transcript.trim()) {
+        logger.info(`Halluzination entfernt: "${transcript.trim()}" → "${cleaned}"`);
+      }
 
-      const result = await this.modes.process(transcript, this.currentMode);
+      const result = await this.modes.process(cleaned, this.currentMode);
       logger.info(`Finaler Text: "${result.slice(0, 100)}"`);
 
       this.clipboard.setText(result);

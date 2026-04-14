@@ -1,10 +1,40 @@
 import { spawnSync } from 'child_process';
 
 /**
- * Bekannte Whisper-Halluzinationen bei Stille oder sehr leisem Audio.
- * Whisper erfindet wiederkehrende Phrasen aus seinem Trainingsdaten-Kontext.
+ * Bekannte Whisper-Halluzinations-Phrasen die direkt aus dem Transkript
+ * herausgeschnitten werden — unabhängig von ihrer Position im Text.
  */
-export const HALLUCINATION_PATTERN = /^(untertitel|subtitles?|captions?|transcribed|amara\.org|vielen dank|thank you|♪|\.{3,}|\[.{0,30}\]|im auftrag|auf wiedersehen|tschüss|bye|end of|www\.|http)/i;
+const HALLUCINATION_STRIPS: RegExp[] = [
+  /untertitel im auftrag des zdf\.?/gi,
+  /untertitel im auftrag von zdf\.?/gi,
+  /untertitel:\s*[^\n]*/gi,
+  /subtitles? by[^\n]*/gi,
+  /captions? by[^\n]*/gi,
+  /transcribed by[^\n]*/gi,
+  /amara\.org[^\n]*/gi,
+  /vielen dank f[üu]r (ihre|eure) aufmerksamkeit\.?/gi,
+  /thank you for watching\.?/gi,
+  /♪[^♪\n]*♪?/g,
+  /\[musik\]/gi,
+  /\[music\]/gi,
+  /\[applaus\]/gi,
+  /\[applause\]/gi,
+  /\[gelächter\]/gi,
+  /\[laughter\]/gi,
+];
+
+/**
+ * Entfernt bekannte Halluzinationen aus einem Whisper-Transkript und
+ * gibt den bereinigten Text zurück (leer wenn nur Halluzination).
+ */
+export function stripHallucinations(text: string): string {
+  let result = text;
+  for (const pattern of HALLUCINATION_STRIPS) {
+    result = result.replace(pattern, '');
+  }
+  // Mehrfache Leerzeilen / führende+nachgestellte Whitespace bereinigen
+  return result.replace(/\n{2,}/g, '\n').trim();
+}
 import * as fs   from 'fs';
 import * as path from 'path';
 import * as os   from 'os';
