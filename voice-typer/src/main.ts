@@ -7,7 +7,7 @@ import * as fs   from 'fs';
 import { TrayManager }       from './tray';
 import { HotkeyManager }     from './hotkey';
 import { AudioRecorder }     from './audio-recorder';
-import { WhisperService }    from './whisper';
+import { WhisperService, HALLUCINATION_PATTERN } from './whisper';
 import { ModeProcessor }     from './modes';
 import { ClipboardManager }  from './clipboard-manager';
 import { SettingsManager }   from './settings';
@@ -151,9 +151,25 @@ class VoiceTyper {
         return;
       }
 
+      // RMS-Energiecheck: zu leises Audio → Whisper halluziniert sonst
+      const rms = WhisperService.rmsEnergy(audio);
+      logger.info(`Audio-RMS: ${rms.toFixed(4)}`);
+      if (rms < 0.005) {
+        logger.warn(`Audio zu leise (RMS ${rms.toFixed(4)}) – Transkription übersprungen.`);
+        this.setState('idle');
+        return;
+      }
+
       const transcript = await this.whisper.transcribe(audio);
       if (!transcript.trim()) {
         logger.info('Leeres Transkript – überspringe.');
+        this.setState('idle');
+        return;
+      }
+
+      // Halluzinations-Filter: bekannte Whisper-Phantomtexte abfangen
+      if (HALLUCINATION_PATTERN.test(transcript.trim())) {
+        logger.warn(`Halluzination erkannt, verwerfe: "${transcript.trim()}"`);
         this.setState('idle');
         return;
       }

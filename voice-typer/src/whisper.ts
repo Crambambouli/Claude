@@ -1,4 +1,10 @@
 import { spawnSync } from 'child_process';
+
+/**
+ * Bekannte Whisper-Halluzinationen bei Stille oder sehr leisem Audio.
+ * Whisper erfindet wiederkehrende Phrasen aus seinem Trainingsdaten-Kontext.
+ */
+export const HALLUCINATION_PATTERN = /^(untertitel|subtitles?|captions?|transcribed|amara\.org|vielen dank|thank you|♪|\.{3,}|\[.{0,30}\]|im auftrag|auf wiedersehen|tschüss|bye|end of|www\.|http)/i;
 import * as fs   from 'fs';
 import * as path from 'path';
 import * as os   from 'os';
@@ -106,14 +112,34 @@ export class WhisperService {
   private buildArgs(audioFile: string, outputDir: string): string[] {
     const args = [
       audioFile,
-      '--model',          this.model,
-      '--output_format',  'txt',
-      '--output_dir',     outputDir,
-      '--task',           'transcribe',
+      '--model',                      this.model,
+      '--output_format',              'txt',
+      '--output_dir',                 outputDir,
+      '--task',                       'transcribe',
+      // Verhindert Halluzinationen bei Stille / leisem Audio
+      '--condition_on_previous_text', 'False',
+      '--no_speech_threshold',        '0.6',
+      '--logprob_threshold',          '-1.0',
+      '--compression_ratio_threshold','2.4',
     ];
     if (this.language && this.language !== 'auto') {
       args.push('--language', this.language);
     }
     return args;
+  }
+
+  /**
+   * Berechnet den RMS-Pegel eines WAV-Buffers (überspringt den 44-Byte-Header).
+   * Gibt einen Wert zwischen 0.0 und 1.0 zurück.
+   */
+  static rmsEnergy(wavBuffer: Buffer): number {
+    if (wavBuffer.length <= 44) return 0;
+    const samples = (wavBuffer.length - 44) / 2;
+    let sum = 0;
+    for (let i = 44; i < wavBuffer.length - 1; i += 2) {
+      const s = wavBuffer.readInt16LE(i) / 32768;
+      sum += s * s;
+    }
+    return Math.sqrt(sum / samples);
   }
 }
