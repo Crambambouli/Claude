@@ -33,18 +33,20 @@
     letter-spacing: 0.05em;
     color: #89b4fa;
   }
-  .title-bar .close-btn {
-    -webkit-app-region: no-drag;
-    background: none;
-    border: none;
-    color: #585b70;
-    font-size: 14px;
-    cursor: pointer;
-    line-height: 1;
-    padding: 0 2px;
-    transition: color .15s;
+  .title-bar .controls { display: flex; gap: 4px; -webkit-app-region: no-drag; }
+  .title-bar .ctrl-btn {
+    background: none; border: none;
+    color: #585b70; font-size: 14px; cursor: pointer;
+    line-height: 1; padding: 0 3px; transition: color .15s;
   }
+  .title-bar .ctrl-btn:hover { color: #cdd6f4; }
   .title-bar .close-btn:hover { color: #f38ba8; }
+
+  /* Compact-Modus: alles außer Titelleiste ausblenden */
+  body.compact .record-area,
+  body.compact .mode-row,
+  body.compact .last-text-row,
+  body.compact .last-text-area { display: none; }
 
   /* ─── Record-Button ───────────────────────────────── */
   .record-area {
@@ -175,7 +177,10 @@
 <!-- Titelleiste (Drag-Bereich) -->
 <div class="title-bar">
   <span class="name">🎤 VOICE TYPER</span>
-  <button class="close-btn" title="Ausblenden" onclick="hideOverlay()">×</button>
+  <div class="controls">
+    <button class="ctrl-btn" id="minBtn" title="Minimieren" onclick="toggleCompact()">─</button>
+    <button class="ctrl-btn close-btn" title="Ausblenden" onclick="hideOverlay()">×</button>
+  </div>
 </div>
 
 <!-- Aufnahme-Button -->
@@ -272,6 +277,15 @@ function copyText() {
     copyBtn.classList.remove('copied');
   }, 1500);
 }
+
+function toggleCompact() {
+  ipcRenderer.send('overlay-toggle-compact');
+}
+
+ipcRenderer.on('set-compact', (_, compact) => {
+  document.body.classList.toggle('compact', compact);
+  document.getElementById('minBtn').textContent = compact ? '□' : '─';
+});
 
 function hideOverlay() {
   ipcRenderer.send('overlay-hide');
