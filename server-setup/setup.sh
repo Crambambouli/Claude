@@ -74,13 +74,14 @@ echo "=== [4/6] Nginx-Snippet erstellen ==="
 sudo tee "$NGINX_SNIPPET" > /dev/null << 'SNIPPET_EOF'
 location /downloads/ {
     alias /var/www/downloads/;
-    autoindex on;
-    autoindex_exact_size off;
-    autoindex_localtime on;
+    index index.html;
     add_header X-Robots-Tag "noindex, nofollow" always;
-    location ~* \.(zip|apk|tar\.gz)$ {
-        add_header Content-Disposition "attachment";
-    }
+}
+
+location ~* /downloads/.*\.apk$ {
+    root /var/www;
+    add_header Content-Type "application/vnd.android.package-archive";
+    add_header Content-Disposition "attachment";
 }
 SNIPPET_EOF
 
