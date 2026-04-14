@@ -87,6 +87,11 @@ class VoiceTyper {
 
     logger.info('VoiceTyper bereit.');
     this.notify('Voice Typer gestartet', `Hotkey: ${s.hotkey || 'F8'} – Modus: ${this.currentMode}`);
+
+    // Whisper-Server im Hintergrund vorwärmen (Modell ins RAM laden)
+    this.whisper.warmUp().catch(err =>
+      logger.warn('Whisper-Server Warm-Up fehlgeschlagen.', err)
+    );
   }
 
   // ─── IPC ──────────────────────────────────────────────────────────────────
@@ -236,6 +241,7 @@ class VoiceTyper {
     logger.info('App wird beendet.');
     this.hotkey?.unregister();
     this.recorder?.destroy();
+    this.whisper?.destroy();
     this.overlay?.destroy();
     this.tray?.destroy();
     app.quit();
