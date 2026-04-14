@@ -1,7 +1,7 @@
 /**
  * Generiert alle App-Icons:
- *  - idle.png / recording.png / processing.png  (Tray-Status)
- *  - app.ico  (Taskleiste / Verknüpfung)  mit "VT"-Logo
+ *  - idle.png / recording.png / processing.png  (Tray-Status, Blitz-Form)
+ *  - blitz.png / app.ico  (Taskleiste / Verknüpfung, gelber Blitz)
  */
 'use strict';
 
@@ -55,68 +55,41 @@ function buildPng(size, pixelsFn) {
   ]);
 }
 
-// ─── Tray-Status-Icons (farbige Kreise) ─────────────────────────────────────
-function makeCirclePng(size, fg, bg) {
-  const cx = size / 2, cy = size / 2, r = size * 0.42;
-  return buildPng(size, (x, y) => {
-    const inside = Math.sqrt((x - cx) ** 2 + (y - cy) ** 2) <= r;
-    return inside ? fg : bg;
-  });
-}
+// ─── Blitz-Logo ──────────────────────────────────────────────────────────────
+// Erzeugt einen Blitz (⚡) der Größe `size`×`size`.
+// Form: oberer Arm (oben-rechts → mitte-links), Querbalken, unterer Arm.
+function makeBlitzPng(size, fg, bg) {
+  const map = new Uint8Array(size * size);  // 0 = bg, 1 = fg
 
-// ─── VT-Logo (Pixel-Font, 5×7 pro Buchstabe, Skalierung 3) ──────────────────
-const FONT_5x7 = {
-  V: [
-    [1,0,0,0,1],
-    [1,0,0,0,1],
-    [1,0,0,0,1],
-    [0,1,0,1,0],
-    [0,1,0,1,0],
-    [0,0,1,0,0],
-    [0,0,1,0,0],
-  ],
-  T: [
-    [1,1,1,1,1],
-    [0,0,1,0,0],
-    [0,0,1,0,0],
-    [0,0,1,0,0],
-    [0,0,1,0,0],
-    [0,0,1,0,0],
-    [0,0,1,0,0],
-  ],
-};
+  function fillRow(y, x1, x2) {
+    if (y < 0 || y >= size) return;
+    for (let x = Math.max(0, x1 | 0); x <= Math.min(size - 1, x2 | 0); x++) {
+      map[y * size + x] = 1;
+    }
+  }
 
-function makeVtPng(size = 32) {
-  const SCALE  = 3;
-  const BG     = [30, 30, 46, 255];   // #1e1e2e
-  const FG     = [137, 180, 250, 255]; // #89b4fa
-  const LW     = 5 * SCALE;            // 15 px
-  const LH     = 7 * SCALE;            // 21 px
-  const GAP    = 2;
-  const startX = Math.floor((size - LW * 2 - GAP) / 2); // horizontal zentrieren
-  const startY = Math.floor((size - LH) / 2);
+  const s = size / 32;  // Skalierungsfaktor (1.0 bei size=32)
 
-  // Pixel-Map aufbauen
-  const map = Array.from({ length: size }, () =>
-    Array.from({ length: size }, () => [...BG])
-  );
+  // ── Oberer Arm (y=2..13): rechte Kante 22→10, Breite 8 ──────────────────
+  for (let y = Math.round(2 * s); y <= Math.round(13 * s); y++) {
+    const t = (y / s - 2) / 11;                   // Fortschritt 0..1
+    const r = Math.round((22 - 12 * t) * s);       // rechte Kante: 22 → 10
+    fillRow(y, r - Math.round(8 * s), r);
+  }
 
-  ['V', 'T'].forEach((letter, li) => {
-    const ox = startX + li * (LW + GAP);
-    FONT_5x7[letter].forEach((row, r) => {
-      row.forEach((on, c) => {
-        if (!on) return;
-        for (let dy = 0; dy < SCALE; dy++)
-          for (let dx = 0; dx < SCALE; dx++) {
-            const px = ox + c * SCALE + dx;
-            const py = startY + r * SCALE + dy;
-            if (px < size && py < size) map[py][px] = [...FG];
-          }
-      });
-    });
-  });
+  // ── Querbalken (y=13..17): x=3..24 ───────────────────────────────────────
+  for (let y = Math.round(13 * s); y <= Math.round(17 * s); y++) {
+    fillRow(y, Math.round(3 * s), Math.round(24 * s));
+  }
 
-  return buildPng(size, (x, y) => map[y][x]);
+  // ── Unterer Arm (y=17..29): linke Kante 14→2, Breite 8 ──────────────────
+  for (let y = Math.round(17 * s); y <= Math.round(29 * s); y++) {
+    const t = (y / s - 17) / 12;                  // Fortschritt 0..1
+    const l = Math.round((14 - 12 * t) * s);       // linke Kante: 14 → 2
+    fillRow(y, l, l + Math.round(8 * s));
+  }
+
+  return buildPng(size, (x, y) => map[y * size + x] ? fg : bg);
 }
 
 // ─── ICO-Builder (PNG-in-ICO, Windows Vista+) ────────────────────────────────
@@ -130,7 +103,7 @@ function makeIco(pngBuf32) {
   dir[0] = 32; dir[1] = 32;    // 32×32
   dir.writeUInt16LE(1,  4);    // planes
   dir.writeUInt16LE(32, 6);    // bpp
-  dir.writeUInt32LE(pngBuf32.length, 8);   // Datengröße
+  dir.writeUInt32LE(pngBuf32.length, 8);
   dir.writeUInt32LE(6 + 16,           12); // Offset = Header + Dir
 
   return Buffer.concat([header, dir, pngBuf32]);
@@ -140,21 +113,25 @@ function makeIco(pngBuf32) {
 const OUT = path.join(__dirname, '..', 'assets', 'icons');
 fs.mkdirSync(OUT, { recursive: true });
 
+// Tray-Icons: farbige Blitze auf transparentem Hintergrund
 const status = [
   { name: 'idle.png',       fg: [60,  200, 60,  255], bg: [0,0,0,0] },
   { name: 'recording.png',  fg: [220, 40,  40,  255], bg: [0,0,0,0] },
   { name: 'processing.png', fg: [220, 160, 0,   255], bg: [0,0,0,0] },
 ];
 for (const { name, fg, bg } of status) {
-  fs.writeFileSync(path.join(OUT, name), makeCirclePng(32, fg, bg));
+  fs.writeFileSync(path.join(OUT, name), makeBlitzPng(32, fg, bg));
   console.log(`  ✓ ${name}`);
 }
 
-const vtPng = makeVtPng(32);
-fs.writeFileSync(path.join(OUT, 'vt-logo.png'), vtPng);
-console.log('  ✓ vt-logo.png');
+// App-Icon: gelber Blitz auf dunklem Hintergrund
+const YELLOW = [249, 226, 175, 255];  // #f9e2af
+const DARK   = [30,  30,  46,  255];  // #1e1e2e
+const blitzPng = makeBlitzPng(32, YELLOW, DARK);
+fs.writeFileSync(path.join(OUT, 'blitz.png'), blitzPng);
+console.log('  ✓ blitz.png');
 
-fs.writeFileSync(path.join(OUT, 'app.ico'), makeIco(vtPng));
-console.log('  ✓ app.ico  (VT-Logo)');
+fs.writeFileSync(path.join(OUT, 'app.ico'), makeIco(blitzPng));
+console.log('  ✓ app.ico  (Blitz-Logo)');
 
 console.log('Icons erstellt.');
