@@ -143,11 +143,31 @@
     overflow: hidden;
   }
   .last-text-area.has-text { color: #bac2de; }
+  .last-text-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 4px 10px 2px;
+  }
   .last-text-label {
     font-size: 10px;
     color: #45475a;
-    margin: 4px 10px 2px;
   }
+  .copy-btn {
+    -webkit-app-region: no-drag;
+    background: none;
+    border: 1px solid #313244;
+    border-radius: 4px;
+    color: #585b70;
+    font-size: 10px;
+    padding: 1px 7px;
+    cursor: pointer;
+    transition: all .12s;
+    display: none;
+  }
+  .copy-btn.visible      { display: inline-block; }
+  .copy-btn:hover        { border-color: #89b4fa; color: #89b4fa; }
+  .copy-btn.copied       { border-color: #a6e3a1; color: #a6e3a1; }
 </style>
 </head>
 <body>
@@ -176,18 +196,25 @@
 </div>
 
 <!-- Letzter transkribierter Text -->
-<div class="last-text-label">Zuletzt:</div>
+<div class="last-text-row">
+  <span class="last-text-label">Zuletzt:</span>
+  <button class="copy-btn" id="copyBtn" onclick="copyText()">Kopieren</button>
+</div>
 <div class="last-text-area" id="lastText">—</div>
 
 <script>
 'use strict';
 const { ipcRenderer } = require('electron');
+const { clipboard }   = require('electron');
 
 const recordBtn   = document.getElementById('recordBtn');
 const recordIcon  = document.getElementById('recordIcon');
 const statusLabel = document.getElementById('statusLabel');
 const hintLabel   = document.getElementById('hintLabel');
 const lastTextEl  = document.getElementById('lastText');
+const copyBtn     = document.getElementById('copyBtn');
+
+let currentLastText = '';
 
 const STATE_CONFIG = {
   idle:       { label: 'BEREIT',        icon: '🎤', hint: 'Klicken oder F8 drücken' },
@@ -213,10 +240,14 @@ ipcRenderer.on('update-state', (_e, { state, mode, lastText }) => {
 
   // Letzter Text
   if (lastText) {
+    currentLastText = lastText;
     lastTextEl.textContent = lastText.length > 80
       ? lastText.slice(0, 77) + '…'
       : lastText;
     lastTextEl.classList.add('has-text');
+    copyBtn.classList.add('visible');
+    copyBtn.textContent = 'Kopieren';
+    copyBtn.classList.remove('copied');
   }
 });
 
@@ -229,6 +260,17 @@ function setMode(btn) {
   document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
   ipcRenderer.send('overlay-set-mode', btn.dataset.mode);
+}
+
+function copyText() {
+  if (!currentLastText) return;
+  clipboard.writeText(currentLastText);
+  copyBtn.textContent = '✓ Kopiert';
+  copyBtn.classList.add('copied');
+  setTimeout(() => {
+    copyBtn.textContent = 'Kopieren';
+    copyBtn.classList.remove('copied');
+  }, 1500);
 }
 
 function hideOverlay() {
