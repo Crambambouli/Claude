@@ -54,9 +54,8 @@ public class VTSetFG {
 $hwnd = [IntPtr]${hwnd}
 if ([VTSetFG]::IsIconic($hwnd)) {
     [VTSetFG]::ShowWindow($hwnd, 9) | Out-Null  # SW_RESTORE – nur wenn minimiert
-} else {
-    [VTSetFG]::ShowWindow($hwnd, 5) | Out-Null  # SW_SHOW – Größe/Position unangetastet
 }
+# Kein ShowWindow für normale/maximierte Fenster – verhindert Positions-/Größenänderung
 [VTSetFG]::SetForegroundWindow($hwnd) | Out-Null
 `.trim();
 
