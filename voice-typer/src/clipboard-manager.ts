@@ -45,7 +45,7 @@ export class ClipboardManager {
         '-NoProfile',
         '-ExecutionPolicy', 'Bypass',
         '-File', scriptPath,
-      ], { timeout: 3_000 });
+      ], { timeout: 3_000, windowsHide: true });
       logger.info('Ctrl+V gesendet.');
     } catch (err) {
       logger.warn('Ctrl+V simulieren fehlgeschlagen.', err);

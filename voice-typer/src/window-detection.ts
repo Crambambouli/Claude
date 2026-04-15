@@ -85,7 +85,7 @@ export async function getActiveWindowInfo(): Promise<WindowInfo | null> {
       '-NoProfile',
       '-ExecutionPolicy', 'Bypass',
       '-File', scriptPath,
-    ], { timeout: 5_000 });
+    ], { timeout: 5_000, windowsHide: true });
 
     const line = stdout.trim();
     const idx1 = line.indexOf('|');
@@ -115,7 +115,7 @@ export async function focusWindowByHwnd(hwnd: string): Promise<void> {
       '-NoProfile',
       '-ExecutionPolicy', 'Bypass',
       '-File', tmpPath,
-    ], { timeout: 3_000 });
+    ], { timeout: 3_000, windowsHide: true });
   } catch (err) {
     logger.warn(`focusWindowByHwnd(${hwnd}) fehlgeschlagen.`, err);
   } finally {

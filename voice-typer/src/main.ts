@@ -320,6 +320,7 @@ app.whenReady().then(async () => {
 function beep(freq: number, durationMs: number): void {
   if (process.platform === 'win32') {
     exec(`powershell -Command "[console]::beep(${freq},${durationMs})"`,
+      { windowsHide: true },
       (err) => { if (err) logger.debug('Beep fehlgeschlagen: ' + err.message); }
     );
   }
