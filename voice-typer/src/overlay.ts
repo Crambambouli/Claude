@@ -33,6 +33,7 @@ export class OverlayManager {
       resizable:   false,
       alwaysOnTop: true,
       skipTaskbar: true,
+      focusable:   false,
       show:        true,
       webPreferences: {
         nodeIntegration:  true,

@@ -3,7 +3,7 @@ import {
 } from 'electron';
 import * as path from 'path';
 import * as fs   from 'fs';
-import { exec }  from 'child_process';
+import { execFile } from 'child_process';
 
 import { TrayManager }       from './tray';
 import { OverlayManager }    from './overlay';
@@ -307,12 +307,15 @@ app.whenReady().then(async () => {
 
 // ─── Audio-Feedback ──────────────────────────────────────────────────────────
 function beep(freq: number, durationMs: number): void {
-  if (process.platform === 'win32') {
-    exec(`powershell -Command "[console]::beep(${freq},${durationMs})"`,
-      { windowsHide: true },
-      (err) => { if (err) logger.debug('Beep fehlgeschlagen: ' + err.message); }
-    );
-  }
+  if (process.platform !== 'win32') return;
+  // execFile statt exec: kein cmd.exe-Wrapper, powershell direkt mit -WindowStyle Hidden
+  execFile('powershell', [
+    '-NonInteractive', '-NoProfile',
+    '-WindowStyle', 'Hidden',
+    '-Command', `[console]::beep(${freq},${durationMs})`,
+  ], { windowsHide: true },
+    (err) => { if (err) logger.debug('Beep fehlgeschlagen: ' + err.message); }
+  );
 }
 
 process.on('uncaughtException', (err) => {
