@@ -13,7 +13,6 @@ import { WhisperService, stripHallucinations } from './whisper';
 import { ModeProcessor }     from './modes';
 import { ClipboardManager }  from './clipboard-manager';
 import { SettingsManager }   from './settings';
-import { getActiveWindowInfo } from './window-detection';
 import { AppState, Mode, Settings } from './types';
 import { logger } from './logger';
 
@@ -36,9 +35,8 @@ class VoiceTyper {
   private clipboard!: ClipboardManager;
   private settings!:  SettingsManager;
 
-  private state:            AppState = 'idle';
-  private currentMode:      Mode     = 'Normal';
-  private targetWindowHwnd: string | null = null;
+  private state:       AppState = 'idle';
+  private currentMode: Mode     = 'Normal';
 
   // ─── Init ──────────────────────────────────────────────────────────────────
 
@@ -144,11 +142,6 @@ class VoiceTyper {
 
   private async startRecording(): Promise<void> {
     try {
-      // Aktives Fenster VOR Aufnahme merken
-      const win = await getActiveWindowInfo();
-      this.targetWindowHwnd = win?.hwnd ?? null;
-      logger.info(`Ziel-Fenster: ${win?.title ?? 'unbekannt'} [${win?.processName ?? ''}]`);
-
       this.setState('recording');
       beep(880, 80);   // hoher Ton = Aufnahme START
       await this.recorder.start(this.settings.get('audioDevice') || undefined);
@@ -203,12 +196,7 @@ class VoiceTyper {
 
       this.lastText = result.slice(0, 120);
       this.clipboard.setText(result);
-
-      if (this.targetWindowHwnd) {
-        await this.clipboard.focusAndPaste(this.targetWindowHwnd);
-      } else {
-        await this.clipboard.simulatePaste();
-      }
+      await this.clipboard.simulatePaste();
 
     } catch (err) {
       logger.error('Verarbeitung fehlgeschlagen.', err);
