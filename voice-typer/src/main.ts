@@ -78,6 +78,7 @@ class VoiceTyper {
     this.overlay.init({
       onModeChange:      (m) => this.onModeChange(m),
       onToggleRecording: () => void this.handleHotkey(),
+      onExit:            () => this.quit(),
     });
 
     this.hotkey = new HotkeyManager(s.hotkey || 'F8');

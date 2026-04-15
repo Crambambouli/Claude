@@ -7,6 +7,7 @@ import { logger } from './logger';
 interface OverlayCallbacks {
   onModeChange:       (mode: Mode) => void;
   onToggleRecording:  () => void;
+  onExit:             () => void;
 }
 
 export class OverlayManager {
@@ -81,6 +82,7 @@ export class OverlayManager {
 
     ipcMain.on('overlay-hide',     () => this.win?.hide());
     ipcMain.on('overlay-minimize', () => this.win?.minimize());
+    ipcMain.on('overlay-exit',     () => this.callbacks.onExit());
   }
 
   private findFile(filename: string): string {
