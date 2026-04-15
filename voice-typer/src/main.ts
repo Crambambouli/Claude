@@ -197,6 +197,7 @@ class VoiceTyper {
 
       this.lastText = result.slice(0, 120);
       this.clipboard.setText(result);
+      await new Promise(r => setTimeout(r, 300));
       await this.clipboard.simulatePaste();
 
     } catch (err) {

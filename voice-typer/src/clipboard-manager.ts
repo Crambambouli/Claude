@@ -9,10 +9,10 @@ import { logger } from './logger';
 
 const execFileAsync = promisify(execFile);
 
-// PowerShell: Ctrl+V simulieren
+// PowerShell: Ctrl+V simulieren (WScript.Shell – kein WinForms-UI-Thread)
 const PS_SEND_CTRL_V = `
-Add-Type -AssemblyName System.Windows.Forms
-[System.Windows.Forms.SendKeys]::SendWait('^v')
+$sh = New-Object -ComObject WScript.Shell
+$sh.SendKeys('^v')
 `.trim();
 
 export class ClipboardManager {
