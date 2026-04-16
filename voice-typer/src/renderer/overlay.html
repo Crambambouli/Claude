@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Voice Typer</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html, body {
+    width: 300px; height: 240px;
+    overflow: hidden;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 12px;
+    background: #11111b;
+    color: #cdd6f4;
+    user-select: none;
+  }
+
+  /* ─── Titelleiste ─────────────────────────────────── */
+  .title-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 6px 10px;
+    background: #1e1e2e;
+    border-bottom: 1px solid #313244;
+    -webkit-app-region: drag;
+    cursor: move;
+  }
+  .title-bar .name {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: #89b4fa;
+  }
+  .title-bar .controls { display: flex; gap: 4px; -webkit-app-region: no-drag; }
+  .title-bar .ctrl-btn {
+    background: none; border: none;
+    color: #585b70; font-size: 14px; cursor: pointer;
+    line-height: 1; padding: 0 3px; transition: color .15s;
+  }
+  .title-bar .ctrl-btn:hover { color: #cdd6f4; }
+  .title-bar .close-btn:hover { color: #f38ba8; }
+  .title-bar .exit-btn { font-size: 9px; letter-spacing: 0.04em; }
+  .title-bar .exit-btn:hover  { color: #f38ba8; }
+
+  /* ─── Record-Button ───────────────────────────────── */
+  .record-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 14px 0 10px;
+  }
+
+  .record-btn {
+    -webkit-app-region: no-drag;
+    width: 72px; height: 72px;
+    border-radius: 50%;
+    border: 3px solid #45475a;
+    background: #1e1e2e;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    transition: transform .12s, border-color .2s, background .2s;
+    position: relative;
+  }
+  .record-btn:hover  { transform: scale(1.06); }
+  .record-btn:active { transform: scale(0.96); }
+
+  /* Zustände */
+  .record-btn.idle       { border-color: #45475a; }
+  .record-btn.recording  { border-color: #f38ba8; background: #3a1e1e;
+                           animation: pulse-red 1s ease-in-out infinite; }
+  .record-btn.processing { border-color: #f9e2af; background: #2e2a1e;
+                           animation: pulse-yellow .8s ease-in-out infinite; }
+
+  @keyframes pulse-red {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(243,139,168,.4); }
+    50%       { box-shadow: 0 0 0 10px rgba(243,139,168,0); }
+  }
+  @keyframes pulse-yellow {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(249,226,175,.4); }
+    50%       { box-shadow: 0 0 0 10px rgba(249,226,175,0); }
+  }
+
+  .status-label {
+    margin-top: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+  .status-label.idle       { color: #6c7086; }
+  .status-label.recording  { color: #f38ba8; }
+  .status-label.processing { color: #f9e2af; }
+
+  .hotkey-hint {
+    margin-top: 2px;
+    font-size: 10px;
+    color: #45475a;
+  }
+
+  /* ─── Modi ────────────────────────────────────────── */
+  .mode-row {
+    display: flex;
+    gap: 5px;
+    padding: 0 10px 10px;
+    justify-content: center;
+  }
+  .mode-btn {
+    -webkit-app-region: no-drag;
+    flex: 1;
+    padding: 5px 0;
+    border-radius: 6px;
+    border: 1px solid #313244;
+    background: #1e1e2e;
+    color: #6c7086;
+    font-size: 11px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all .12s;
+    text-align: center;
+  }
+  .mode-btn:hover   { border-color: #89b4fa; color: #cdd6f4; }
+  .mode-btn.active  { border-color: #89b4fa; background: #1e3a5f; color: #89b4fa; font-weight: 700; }
+
+  /* ─── Letzter Text ─────────────────────────────────── */
+  .last-text-area {
+    margin: 0 10px;
+    padding: 6px 8px;
+    background: #1e1e2e;
+    border: 1px solid #313244;
+    border-radius: 6px;
+    font-size: 11px;
+    color: #585b70;
+    line-height: 1.4;
+    min-height: 32px;
+    max-height: 32px;
+    overflow: hidden;
+  }
+  .last-text-area.has-text { color: #bac2de; }
+  .last-text-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin: 4px 10px 2px;
+  }
+  .last-text-label {
+    font-size: 10px;
+    color: #45475a;
+  }
+  .copy-btn {
+    -webkit-app-region: no-drag;
+    background: none;
+    border: 1px solid #313244;
+    border-radius: 4px;
+    color: #585b70;
+    font-size: 10px;
+    padding: 1px 7px;
+    cursor: pointer;
+    transition: all .12s;
+    display: none;
+  }
+  .copy-btn.visible      { display: inline-block; }
+  .copy-btn:hover        { border-color: #89b4fa; color: #89b4fa; }
+  .copy-btn.copied       { border-color: #a6e3a1; color: #a6e3a1; }
+</style>
+</head>
+<body>
+
+<!-- Titelleiste (Drag-Bereich) -->
+<div class="title-bar">
+  <span class="name">🎤 VOICE TYPER</span>
+  <div class="controls">
+    <button class="ctrl-btn" id="minBtn" title="Minimieren" onclick="minimizeOverlay()">─</button>
+    <button class="ctrl-btn close-btn" title="Ausblenden" onclick="hideOverlay()">×</button>
+    <button class="ctrl-btn exit-btn" title="Beenden" onclick="exitApp()">END</button>
+  </div>
+</div>
+
+<!-- Aufnahme-Button -->
+<div class="record-area">
+  <button class="record-btn idle" id="recordBtn" onclick="toggleRecording()" title="Klicken oder Ctrl+F8">
+    <span id="recordIcon">🎤</span>
+  </button>
+  <div class="status-label idle" id="statusLabel">BEREIT</div>
+  <div class="hotkey-hint" id="hintLabel">Klicken oder Ctrl+F8 drücken</div>
+</div>
+
+<!-- Modus-Auswahl -->
+<div class="mode-row">
+  <button class="mode-btn active" data-mode="Normal"  onclick="setMode(this)">Normal</button>
+  <button class="mode-btn"        data-mode="Plus"    onclick="setMode(this)">Plus ✨</button>
+  <button class="mode-btn"        data-mode="Rage"    onclick="setMode(this)">Rage 💢</button>
+  <button class="mode-btn"        data-mode="Emoji"   onclick="setMode(this)">Emoji 😊</button>
+</div>
+
+<!-- Letzter transkribierter Text -->
+<div class="last-text-row">
+  <span class="last-text-label">Zuletzt:</span>
+  <button class="copy-btn" id="copyBtn" onclick="copyText()">Kopieren</button>
+</div>
+<div class="last-text-area" id="lastText">—</div>
+
+<script>
+'use strict';
+const { ipcRenderer } = require('electron');
+const { clipboard }   = require('electron');
+
+const recordBtn   = document.getElementById('recordBtn');
+const recordIcon  = document.getElementById('recordIcon');
+const statusLabel = document.getElementById('statusLabel');
+const hintLabel   = document.getElementById('hintLabel');
+const lastTextEl  = document.getElementById('lastText');
+const copyBtn     = document.getElementById('copyBtn');
+
+let currentLastText = '';
+
+const STATE_CONFIG = {
+  idle:       { label: 'BEREIT',        icon: '🎤', hint: 'Klicken oder Ctrl+F8 drücken' },
+  recording:  { label: 'AUFNAHME …',    icon: '⏹',  hint: 'Erneut klicken zum Stoppen' },
+  processing: { label: 'VERARBEITUNG …',icon: '⏳', hint: 'Bitte warten …' },
+};
+
+// ─── State-Updates vom Main-Prozess ────────────────────────────────────────
+ipcRenderer.on('update-state', (_e, { state, mode, lastText }) => {
+  const cfg = STATE_CONFIG[state] ?? STATE_CONFIG.idle;
+
+  // Button-Zustand
+  recordBtn.className = `record-btn ${state}`;
+  recordIcon.textContent = cfg.icon;
+  statusLabel.className  = `status-label ${state}`;
+  statusLabel.textContent = cfg.label;
+  hintLabel.textContent   = cfg.hint;
+
+  // Modus-Buttons synchronisieren
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === mode);
+  });
+
+  // Letzter Text
+  if (lastText) {
+    currentLastText = lastText;
+    lastTextEl.textContent = lastText.length > 80
+      ? lastText.slice(0, 77) + '…'
+      : lastText;
+    lastTextEl.classList.add('has-text');
+    copyBtn.classList.add('visible');
+    copyBtn.textContent = 'Kopieren';
+    copyBtn.classList.remove('copied');
+  }
+});
+
+// ─── Aktionen ───────────────────────────────────────────────────────────────
+function toggleRecording() {
+  ipcRenderer.send('overlay-toggle-recording');
+}
+
+function setMode(btn) {
+  document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  ipcRenderer.send('overlay-set-mode', btn.dataset.mode);
+}
+
+function copyText() {
+  if (!currentLastText) return;
+  clipboard.writeText(currentLastText);
+  copyBtn.textContent = '✓ Kopiert';
+  copyBtn.classList.add('copied');
+  setTimeout(() => {
+    copyBtn.textContent = 'Kopieren';
+    copyBtn.classList.remove('copied');
+  }, 1500);
+}
+
+function minimizeOverlay() {
+  ipcRenderer.send('overlay-minimize');
+}
+
+function hideOverlay() {
+  ipcRenderer.send('overlay-hide');
+}
+
+function exitApp() {
+  ipcRenderer.send('overlay-exit');
+}
+</script>
+</body>
+</html>
