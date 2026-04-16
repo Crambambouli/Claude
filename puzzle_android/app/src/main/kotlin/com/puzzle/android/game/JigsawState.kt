@@ -20,17 +20,12 @@ data class JigsawState(
     val placedCount : Int     get() = pieces.count { it.isPlaced }
     val total       : Int     get() = rows * cols
 
-    companion object {
-        /** Fraction of the total width occupied by the board. */
-        const val BOARD_FRACTION = 0.75f
-    }
-
     /** Returns the correct board position (as fractions) for the given piece. */
     fun correctCenter(piece: JigsawPiece): Pair<Float, Float> {
-        val cellFracW = BOARD_FRACTION / cols
-        val cellFracH = 1f / rows
-        val cx = piece.definition.col * cellFracW + cellFracW / 2f
-        val cy = piece.definition.row * cellFracH + cellFracH / 2f
+        val cellFracW = BOARD_FRACTION / cols.toFloat()
+        val cellFracH = 1f / rows.toFloat()
+        val cx = piece.definition.col.toFloat() * cellFracW + cellFracW / 2f
+        val cy = piece.definition.row.toFloat() * cellFracH + cellFracH / 2f
         return Pair(cx, cy)
     }
 
@@ -42,8 +37,8 @@ data class JigsawState(
         val piece = pieces.first { it.id == id }
         val (cx, cy) = correctCenter(piece)
 
-        val snapW = (BOARD_FRACTION / cols) * 0.40f
-        val snapH = (1f / rows) * 0.40f
+        val snapW = (BOARD_FRACTION / cols.toFloat()) * 0.40f
+        val snapH = (1f / rows.toFloat()) * 0.40f
         val snapped = abs(x - cx) < snapW && abs(y - cy) < snapH
 
         val newX = if (snapped) cx else x.coerceIn(0.01f, 0.99f)
@@ -57,21 +52,23 @@ data class JigsawState(
     }
 
     companion object {
+        /** Fraction of the total width occupied by the board. */
+        const val BOARD_FRACTION = 0.75f
+
         fun create(rows: Int, cols: Int, definitions: List<PieceDefinition>): JigsawState {
-            val rng = Random.Default
+            val rng       = Random.Default
             val trayLeft  = BOARD_FRACTION + 0.02f
             val trayRight = 0.98f
             val trayW     = trayRight - trayLeft
 
-            // Distribute pieces evenly within tray, with a bit of random jitter
             val pieces = definitions.mapIndexed { idx, def ->
-                val col2 = idx % 2
-                val row2 = idx / 2
+                val col2     = idx % 2
+                val row2     = idx / 2
                 val trayRows = (definitions.size + 1) / 2
-                val baseX = trayLeft + trayW * (col2 + 0.5f) / 2f
-                val baseY = (row2 + 0.5f) / trayRows.toFloat()
-                val jitterX = (rng.nextFloat() - 0.5f) * trayW * 0.3f
-                val jitterY = (rng.nextFloat() - 0.5f) * (1f / trayRows) * 0.4f
+                val baseX    = trayLeft + trayW * (col2.toFloat() + 0.5f) / 2f
+                val baseY    = (row2.toFloat() + 0.5f) / trayRows.toFloat()
+                val jitterX  = (rng.nextFloat() - 0.5f) * trayW * 0.3f
+                val jitterY  = (rng.nextFloat() - 0.5f) * (1f / trayRows.toFloat()) * 0.4f
                 JigsawPiece(
                     id         = idx,
                     definition = def,

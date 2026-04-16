@@ -361,7 +361,7 @@ private fun PieceCanvas(
         // Border
         val borderColor = when {
             isPlaced   -> Color(0xFF4CAF50)
-            isDragging -> MaterialTheme.colorScheme.primary.let { Color(0xFF1976D2) }
+            isDragging -> Color(0xFF1976D2)
             else       -> Color(0x66000000)
         }
         drawPath(path, color = borderColor, style = Stroke(width = if (isPlaced) 2.5f else 1.5f))
