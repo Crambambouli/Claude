@@ -115,9 +115,7 @@ fun PuzzleScreen(
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
                 Text("Kein Puzzle geladen")
             }
-            return@Scaffold
-        }
-
+        } else {
         Column(Modifier.fillMaxSize().padding(padding)) {
 
             // ── Win banner ───────────────────────────────────────────────────
@@ -210,10 +208,12 @@ fun PuzzleScreen(
 
                 sorted.forEach { piece ->
                     key(piece.id) {
-                        val drag    = dragOffsets[piece.id] ?: Offset.Zero
-                        val def     = piece.definition
-                        val path    = paths[piece.id] ?: return@key
+                        val drag       = dragOffsets[piece.id] ?: Offset.Zero
+                        val def        = piece.definition
+                        val path       = paths[piece.id]
                         val isDragging = dragOffsets.containsKey(piece.id)
+
+                        if (path != null) {
 
                         // Screen center of this piece's grid cell
                         val screenCX = piece.x * widthPx + drag.x
@@ -284,9 +284,10 @@ fun PuzzleScreen(
                                 isPlaced  = piece.isPlaced,
                                 isDragging= isDragging
                             )
-                        }
-                    }
-                }
+                        } // Box
+                        } // if (path != null)
+                    } // key
+                } // forEach
             }
 
             // ── Bottom controls ──────────────────────────────────────────────
@@ -306,7 +307,7 @@ fun PuzzleScreen(
                     modifier = Modifier.height(44.dp)
                 ) { Text("Neu mischen") }
             }
-        }
+        } // else (state != null)
     }
 }
 
