@@ -48,11 +48,11 @@ fun SetupScreen(
     navController: NavController,
     vm: PuzzleViewModel = viewModel()
 ) {
-    val category  by vm.category.collectAsState()
-    val style     by vm.style.collectAsState()
-    val boardSize by vm.boardSize.collectAsState()
-    val isLoading by vm.isLoading.collectAsState()
-    val error     by vm.error.collectAsState()
+    val category   by vm.category.collectAsState()
+    val style      by vm.style.collectAsState()
+    val pieceCount by vm.pieceCount.collectAsState()
+    val isLoading  by vm.isLoading.collectAsState()
+    val error      by vm.error.collectAsState()
 
     LaunchedEffect(Unit) {
         vm.goToPuzzle.collect { navController.navigate("puzzle") }
@@ -97,12 +97,15 @@ fun SetupScreen(
 
                 // ── Teile ─────────────────────────────────────────────────────
                 SectionTitle("Anzahl Teile")
-                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    listOf(3 to "9 Teile", 4 to "16 Teile", 5 to "25 Teile").forEach { (n, label) ->
-                        if (n == boardSize) {
-                            Button(onClick = {}) { Text(label) }
+                androidx.compose.foundation.layout.FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement   = Arrangement.spacedBy(8.dp)
+                ) {
+                    listOf(50, 100, 200, 400, 850).forEach { n ->
+                        if (n == pieceCount) {
+                            Button(onClick = {}) { Text("$n Teile") }
                         } else {
-                            OutlinedButton(onClick = { vm.selectSize(n) }) { Text(label) }
+                            OutlinedButton(onClick = { vm.selectPieceCount(n) }) { Text("$n Teile") }
                         }
                     }
                 }

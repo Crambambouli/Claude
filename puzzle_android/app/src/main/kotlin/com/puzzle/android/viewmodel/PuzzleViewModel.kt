@@ -5,27 +5,33 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.puzzle.android.data.image.ImageGenerator
+import com.puzzle.android.data.image.TestImageGenerator
 import com.puzzle.android.data.model.PuzzleCategory
 import com.puzzle.android.data.model.PuzzleStyle
+import com.puzzle.android.game.JigsawShapeGenerator
 import com.puzzle.android.game.JigsawState
+import com.puzzle.android.game.PieceDefinition
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class PuzzleViewModel : ViewModel() {
 
-    // ── Setup selections ─────────────────────────────────────────────────────
+    // ── Setup ────────────────────────────────────────────────────────────────
     private val _category  = MutableStateFlow(PuzzleCategory.BLUMEN)
     val category: StateFlow<PuzzleCategory> = _category.asStateFlow()
 
     private val _style     = MutableStateFlow(PuzzleStyle.BUNT)
     val style: StateFlow<PuzzleStyle> = _style.asStateFlow()
 
-    private val _boardSize = MutableStateFlow(4)
-    val boardSize: StateFlow<Int> = _boardSize.asStateFlow()
+    // Total piece count (maps to rows × cols in the ViewModel)
+    private val _pieceCount = MutableStateFlow(50)
+    val pieceCount: StateFlow<Int> = _pieceCount.asStateFlow()
 
     // ── Loading / error ──────────────────────────────────────────────────────
     private val _isLoading = MutableStateFlow(false)
@@ -35,34 +41,49 @@ class PuzzleViewModel : ViewModel() {
     val error: StateFlow<String?> = _error.asStateFlow()
 
     // ── Game state ───────────────────────────────────────────────────────────
-    private val _bitmap    = MutableStateFlow<ImageBitmap?>(null)
+    private val _bitmap      = MutableStateFlow<ImageBitmap?>(null)
     val bitmap: StateFlow<ImageBitmap?> = _bitmap.asStateFlow()
 
-    private val _jigsaw    = MutableStateFlow<JigsawState?>(null)
+    private val _definitions = MutableStateFlow<List<PieceDefinition>>(emptyList())
+    val definitions: StateFlow<List<PieceDefinition>> = _definitions.asStateFlow()
+
+    private val _jigsaw      = MutableStateFlow<JigsawState?>(null)
     val jigsaw: StateFlow<JigsawState?> = _jigsaw.asStateFlow()
 
-    // ── Navigation signal ────────────────────────────────────────────────────
+    // ── Navigation ───────────────────────────────────────────────────────────
     private val _goToPuzzle = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val goToPuzzle = _goToPuzzle.asSharedFlow()
 
     // ── Setup actions ────────────────────────────────────────────────────────
     fun selectCategory(cat: PuzzleCategory) { _category.value = cat }
     fun selectStyle(s: PuzzleStyle)         { _style.value = s }
-    fun selectSize(n: Int)                  { _boardSize.value = n }
+    fun selectPieceCount(n: Int)            { _pieceCount.value = n }
 
     fun generatePuzzle() {
         viewModelScope.launch {
             _isLoading.value = true
             _error.value     = null
             try {
-                val url = ImageGenerator.buildUrl(_category.value, _style.value)
-                val bmp = ImageGenerator.download(url)
-                _bitmap.value = bmp?.asImageBitmap()
-            } catch (_: Exception) {
-                _error.value  = "Bild konnte nicht geladen werden – Rosenvorlage wird verwendet."
-                _bitmap.value = null
+                val (rows, cols) = pieceCountToGrid(_pieceCount.value)
+
+                // Try downloading an AI image; fall back to test bitmap
+                val bmp = withContext(Dispatchers.IO) {
+                    try {
+                        val url = ImageGenerator.buildUrl(_category.value, _style.value)
+                        ImageGenerator.download(url)
+                    } catch (_: Exception) { null }
+                } ?: withContext(Dispatchers.IO) {
+                    TestImageGenerator.create(cols, rows)
+                }
+
+                _bitmap.value = bmp.asImageBitmap()
+
+                val defs = JigsawShapeGenerator.generatePuzzle(rows, cols)
+                _definitions.value = defs
+                _jigsaw.value      = JigsawState.create(rows, cols, defs)
+            } catch (e: Exception) {
+                _error.value = "Fehler: ${e.message}"
             } finally {
-                _jigsaw.value    = JigsawState.create(_boardSize.value)
                 _isLoading.value = false
                 _goToPuzzle.tryEmit(Unit)
             }
@@ -75,12 +96,24 @@ class PuzzleViewModel : ViewModel() {
     }
 
     fun newGame() {
-        _jigsaw.value = _jigsaw.value?.let { JigsawState.create(it.size) }
+        val defs = _definitions.value
+        val state = _jigsaw.value ?: return
+        _jigsaw.value = JigsawState.create(state.rows, state.cols, defs)
     }
 
     fun backToSetup() {
         _jigsaw.value  = null
         _bitmap.value  = null
         _error.value   = null
+    }
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    private fun pieceCountToGrid(count: Int): Pair<Int, Int> = when (count) {
+        50   -> Pair(5,  10)
+        100  -> Pair(10, 10)
+        200  -> Pair(10, 20)
+        400  -> Pair(20, 20)
+        850  -> Pair(25, 34)
+        else -> Pair(5,  10)
     }
 }
