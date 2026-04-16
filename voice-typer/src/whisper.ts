@@ -118,7 +118,7 @@ export class WhisperService {
 
   checkInstallation(): { ok: boolean; message: string } {
     const cmd = this.resolveCliCmd();
-    const res = spawnSync(cmd, ['--help'], { timeout: 5_000, encoding: 'utf8' });
+    const res = spawnSync(cmd, ['--help'], { timeout: 5_000, encoding: 'utf8', windowsHide: true });
     if (res.error || res.status === null) {
       return { ok: false, message: `Whisper nicht gefunden: "${cmd}". pip install faster-whisper` };
     }
@@ -194,8 +194,9 @@ export class WhisperService {
     logger.info(`Starte Whisper-Server: ${python} ${args.join(' ')}`);
 
     this.serverProc = spawn(python, args, {
-      stdio:    ['ignore', 'pipe', 'pipe'],
-      detached: false,
+      stdio:       ['ignore', 'pipe', 'pipe'],
+      detached:    false,
+      windowsHide: true,
     });
 
     this.serverProc.stdout?.on('data', (d: Buffer) => logger.info(`[whisper-server] ${d.toString().trim()}`));
@@ -265,7 +266,7 @@ export class WhisperService {
       const args = this.buildCliArgs(wavFile, tmpDir);
       logger.info(`CLI: ${cmd} ${args.join(' ')}`);
 
-      const result = spawnSync(cmd, args, { timeout: 120_000, encoding: 'utf8', env: { ...process.env } });
+      const result = spawnSync(cmd, args, { timeout: 120_000, encoding: 'utf8', windowsHide: true, env: { ...process.env } });
       if (result.error) throw result.error;
       if ((result.status ?? 1) !== 0) {
         throw new Error(`Whisper Fehlercode ${result.status}: ${result.stderr?.trim()}`);
