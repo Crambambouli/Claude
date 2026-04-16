@@ -4,7 +4,6 @@ import * as fs   from 'fs';
 import * as path from 'path';
 import * as os   from 'os';
 import { promisify }   from 'util';
-import { focusWindowByHwnd } from './window-detection';
 import { logger } from './logger';
 
 const execFileAsync = promisify(execFile);
@@ -17,15 +16,6 @@ export class ClipboardManager {
   setText(text: string): void {
     clipboard.writeText(text);
     logger.info(`Zwischenablage gesetzt (${text.length} Zeichen).`);
-  }
-
-  /** Fokussiert das Ziel-Fenster und fügt per Ctrl+V ein. */
-  async focusAndPaste(targetHwnd: string): Promise<void> {
-    logger.info(`Fokussiere Fenster HWND ${targetHwnd} …`);
-    await focusWindowByHwnd(targetHwnd);
-    // Kurze Pause, damit das Fenster tatsächlich fokussiert ist
-    await sleep(150);
-    await this.simulatePaste();
   }
 
   /** Sendet Ctrl+V an das aktuell fokussierte Fenster (Windows). */
@@ -50,6 +40,3 @@ export class ClipboardManager {
   }
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
