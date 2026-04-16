@@ -23,7 +23,7 @@ export const DEFAULT_SETTINGS: Settings = {
   whisperModel:    'base',
   whisperLanguage: 'auto',
   apiKey:          '',
-  hotkey:          'F8',
+  hotkey:          'Ctrl+F8',
   audioDevice:     '',
 };
 
