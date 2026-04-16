@@ -142,6 +142,23 @@ function buildWAV(chunks, sampleRate) {
   return buf;
 }
 
+// ─── Beep via Web Audio API ─────────────────────────────────────────────────
+ipcRenderer.on('play-beep', (_e, { freq, durationMs }) => {
+  try {
+    const ctx  = new AudioContext();
+    const osc  = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.3, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + durationMs / 1000);
+    osc.start(ctx.currentTime);
+    osc.stop(ctx.currentTime + durationMs / 1000);
+    osc.onended = () => ctx.close();
+  } catch { /* ignore */ }
+});
+
 // ─── Audio-Geräte abfragen ──────────────────────────────────────────────────
 ipcRenderer.on('get-audio-devices', async () => {
   try {

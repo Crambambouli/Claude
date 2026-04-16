@@ -151,6 +151,12 @@ export class AudioRecorder {
     });
   }
 
+  /** Spielt einen Ton über die Web Audio API im Recorder-Fenster. */
+  playBeep(freq: number, durationMs: number): void {
+    if (!this.win || this.win.isDestroyed()) return;
+    this.win.webContents.send('play-beep', { freq, durationMs });
+  }
+
   destroy(): void {
     if (this.win && !this.win.isDestroyed()) {
       this.win.destroy();

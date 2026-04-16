@@ -3,7 +3,6 @@ import {
 } from 'electron';
 import * as path from 'path';
 import * as fs   from 'fs';
-import { execFile } from 'child_process';
 
 import { TrayManager }       from './tray';
 import { OverlayManager }    from './overlay';
@@ -144,7 +143,7 @@ class VoiceTyper {
   private async startRecording(): Promise<void> {
     try {
       this.setState('recording');
-      beep(880, 80);   // hoher Ton = Aufnahme START
+      this.recorder.playBeep(880, 80);
       await this.recorder.start(this.settings.get('audioDevice') || undefined);
     } catch (err) {
       logger.error('Aufnahme konnte nicht gestartet werden.', err);
@@ -154,7 +153,7 @@ class VoiceTyper {
   }
 
   private async stopAndProcess(): Promise<void> {
-    beep(440, 80);   // tiefer Ton = Aufnahme STOP
+    this.recorder.playBeep(440, 80);
     this.setState('processing');
     try {
       const audio = await this.recorder.stop();
@@ -306,18 +305,6 @@ app.whenReady().then(async () => {
   }
 });
 
-// ─── Audio-Feedback ──────────────────────────────────────────────────────────
-function beep(freq: number, durationMs: number): void {
-  if (process.platform !== 'win32') return;
-  // execFile statt exec: kein cmd.exe-Wrapper, powershell direkt mit -WindowStyle Hidden
-  execFile('powershell', [
-    '-NonInteractive', '-NoProfile',
-    '-WindowStyle', 'Hidden',
-    '-Command', `[console]::beep(${freq},${durationMs})`,
-  ], { windowsHide: true },
-    (err) => { if (err) logger.debug('Beep fehlgeschlagen: ' + err.message); }
-  );
-}
 
 process.on('uncaughtException', (err) => {
   logger.error('Uncaught exception', err);

@@ -9,11 +9,8 @@ import { logger } from './logger';
 
 const execFileAsync = promisify(execFile);
 
-// PowerShell: Ctrl+V simulieren (WScript.Shell – kein WinForms-UI-Thread)
-const PS_SEND_CTRL_V = `
-$sh = New-Object -ComObject WScript.Shell
-$sh.SendKeys('^v')
-`.trim();
+// VBScript: Ctrl+V simulieren – kein PowerShell, kein .NET-Overhead
+const VBS_SEND_CTRL_V = 'CreateObject("WScript.Shell").SendKeys "^v"';
 
 export class ClipboardManager {
   /** Setzt den Text in die Zwischenablage. */
@@ -37,14 +34,12 @@ export class ClipboardManager {
       logger.warn('simulatePaste nur auf Windows implementiert.');
       return;
     }
-    const scriptPath = path.join(os.tmpdir(), 'vt-paste.ps1');
+    const scriptPath = path.join(os.tmpdir(), 'vt-paste.vbs');
     try {
-      fs.writeFileSync(scriptPath, PS_SEND_CTRL_V, 'utf8');
-      await execFileAsync('powershell', [
-        '-NonInteractive',
-        '-NoProfile',
-        '-ExecutionPolicy', 'Bypass',
-        '-File', scriptPath,
+      fs.writeFileSync(scriptPath, VBS_SEND_CTRL_V, 'utf8');
+      await execFileAsync('wscript', [
+        '//nologo',
+        scriptPath,
       ], { timeout: 3_000, windowsHide: true });
       logger.info('Ctrl+V gesendet.');
     } catch (err) {
