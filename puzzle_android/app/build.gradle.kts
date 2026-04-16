@@ -1,7 +1,6 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.ksp)
 }
 
 android {
@@ -19,9 +18,6 @@ android {
         vectorDrawables {
             useSupportLibrary = true
         }
-
-        // Base URL injected at build time; override via local.properties or CI env
-        buildConfigField("String", "API_BASE_URL", "\"https://api.example.com/\"")
     }
 
     buildTypes {
@@ -53,7 +49,6 @@ android {
 
     buildFeatures {
         compose = true
-        buildConfig = true
     }
 
     composeOptions {
@@ -90,26 +85,15 @@ dependencies {
     implementation(libs.androidx.material.icons.extended)
     implementation(libs.androidx.viewmodel.compose)
 
-    // Networking
-    implementation(libs.retrofit.core)
-    implementation(libs.retrofit.gson)
+    // Networking (image download)
     implementation(libs.okhttp.core)
-    implementation(libs.okhttp.logging)
-    implementation(libs.gson)
 
     // Navigation
     implementation(libs.androidx.navigation.compose)
 
-    // Room (local database)
-    implementation(libs.room.runtime)
-    implementation(libs.room.ktx)
-    ksp(libs.room.compiler)
-
     // Unit tests
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)
-    testImplementation(libs.mockito.core)
-    testImplementation(libs.mockito.kotlin)
 
     // Android / Compose instrumented tests
     androidTestImplementation(libs.androidx.junit)
