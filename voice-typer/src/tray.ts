@@ -44,9 +44,9 @@ export class TrayManager {
     this.state = state;
     if (this.tray) {
       this.tray.setImage(this.getIcon(state));
-      this.tray.setToolTip(STATE_TOOLTIP[state]);
+      this.tray.setToolTip(`Voice Typer [${this.mode}] – ${STATE_TOOLTIP[state]}`);
     }
-    this.rebuild();
+    // Kein rebuild() – Win32-HMENU-Neuaufbau löst Fokus-Interaktionen aus
   }
 
   setMode(mode: Mode): void {
