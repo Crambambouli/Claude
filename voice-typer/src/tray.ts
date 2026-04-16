@@ -13,8 +13,8 @@ const STATE_LABEL: Record<AppState, string> = {
 };
 
 const STATE_TOOLTIP: Record<AppState, string> = {
-  idle:       'Voice Typer – Bereit (F8 = Aufnahme starten)',
-  recording:  'Voice Typer – Aufnahme läuft … (F8 = Stoppen)',
+  idle:       'Voice Typer – Bereit (Ctrl+F8 = Aufnahme starten)',
+  recording:  'Voice Typer – Aufnahme läuft … (Ctrl+F8 = Stoppen)',
   processing: 'Voice Typer – Verarbeitung …',
 };
 

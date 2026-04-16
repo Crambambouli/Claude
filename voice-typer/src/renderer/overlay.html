@@ -182,11 +182,11 @@
 
 <!-- Aufnahme-Button -->
 <div class="record-area">
-  <button class="record-btn idle" id="recordBtn" onclick="toggleRecording()" title="Klicken oder F8">
+  <button class="record-btn idle" id="recordBtn" onclick="toggleRecording()" title="Klicken oder Ctrl+F8">
     <span id="recordIcon">🎤</span>
   </button>
   <div class="status-label idle" id="statusLabel">BEREIT</div>
-  <div class="hotkey-hint" id="hintLabel">Klicken oder F8 drücken</div>
+  <div class="hotkey-hint" id="hintLabel">Klicken oder Ctrl+F8 drücken</div>
 </div>
 
 <!-- Modus-Auswahl -->
@@ -219,7 +219,7 @@ const copyBtn     = document.getElementById('copyBtn');
 let currentLastText = '';
 
 const STATE_CONFIG = {
-  idle:       { label: 'BEREIT',        icon: '🎤', hint: 'Klicken oder F8 drücken' },
+  idle:       { label: 'BEREIT',        icon: '🎤', hint: 'Klicken oder Ctrl+F8 drücken' },
   recording:  { label: 'AUFNAHME …',    icon: '⏹',  hint: 'Erneut klicken zum Stoppen' },
   processing: { label: 'VERARBEITUNG …',icon: '⏳', hint: 'Bitte warten …' },
 };

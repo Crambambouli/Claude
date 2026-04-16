@@ -80,13 +80,13 @@ class VoiceTyper {
       onExit:            () => this.quit(),
     });
 
-    this.hotkey = new HotkeyManager(s.hotkey || 'F8');
+    this.hotkey = new HotkeyManager(s.hotkey || 'Ctrl+F8');
     this.hotkey.on('triggered', () => void this.handleHotkey());
 
     this.setupIPC();
 
     logger.info('VoiceTyper bereit.');
-    this.notify('Voice Typer gestartet', `Hotkey: ${s.hotkey || 'F8'} – Modus: ${this.currentMode}`);
+    this.notify('Voice Typer gestartet', `Hotkey: ${s.hotkey || 'Ctrl+F8'} – Modus: ${this.currentMode}`);
 
     // Whisper-Server im Hintergrund vorwärmen (Modell ins RAM laden)
     this.whisper.warmUp().catch(err =>
