@@ -26,7 +26,6 @@ android {
 
     buildTypes {
         debug {
-            applicationIdSuffix = ".debug"
             isDebuggable = true
             isMinifyEnabled = false
         }
@@ -94,8 +93,12 @@ dependencies {
     // Networking
     implementation(libs.retrofit.core)
     implementation(libs.retrofit.gson)
+    implementation(libs.okhttp.core)
     implementation(libs.okhttp.logging)
     implementation(libs.gson)
+
+    // Navigation
+    implementation(libs.androidx.navigation.compose)
 
     // Room (local database)
     implementation(libs.room.runtime)
