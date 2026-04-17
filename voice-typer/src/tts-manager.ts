@@ -57,14 +57,16 @@ export class TtsManager {
 
   static cleanForSpeech(text: string): string {
     return text
+      // Zeilenumbrüche normalisieren (Windows \r\n → \n)
+      .replace(/\r\n/g, '\n')
       // Markdown-Überschriften
       .replace(/^#{1,6}\s+/gm, '')
       // Fett/Kursiv (**text** / *text*)
       .replace(/\*{1,2}(.+?)\*{1,2}/g, '$1')
-      // Bullet-Zeichen (•, ▸, ►, ·)
-      .replace(/[•·▸▹►◆]/g, '')
-      // Markdown-Listenzeichen am Zeilenanfang (- / * / +)
-      .replace(/^\s*[-*+]\s+/gm, '')
+      // Bullet-Zeichen (•, ▸, ►, ·) und alle verbleibenden Sternchen
+      .replace(/[•·▸▹►◆*]/g, '')
+      // Markdown-Listenzeichen am Zeilenanfang (- / +)
+      .replace(/^\s*[-+]\s+/gm, '')
       // Schrägstrich zwischen Wörtern → Leerzeichen ("A / B" → "A B")
       .replace(/\s*\/\s*/g, ' ')
       // Doppelpunkt am Zeilenende → Punkt (SAPI macht keine Pause sonst)
