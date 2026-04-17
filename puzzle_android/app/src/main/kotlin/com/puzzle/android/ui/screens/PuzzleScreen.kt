@@ -335,6 +335,11 @@ fun PuzzleScreen(
                                                         }
                                                     )
                                                 }
+                                                .pointerInput(piece.id) {
+                                                    detectTapGestures(
+                                                        onDoubleTap = { vm.movePieceToTray(piece.id) }
+                                                    )
+                                                }
                                         ) {
                                             PieceCanvas(
                                                 piece      = piece,

@@ -159,6 +159,20 @@ data class JigsawState(
         })
     }
 
+    fun movePieceToTray(id: Int): JigsawState {
+        val piece = pieces.first { it.id == id }
+        if (piece.isInTray) return this
+        val gid = piece.groupId
+        val remainingInGroup = if (gid != null) pieces.count { it.id != id && it.groupId == gid } else 0
+        return copy(pieces = pieces.map { p ->
+            when {
+                p.id == id -> p.copy(x = BOARD_FRACTION + 0.01f, y = 0.5f, isPlaced = false, groupId = null)
+                gid != null && p.groupId == gid && remainingInGroup == 1 -> p.copy(groupId = null)
+                else -> p
+            }
+        })
+    }
+
     companion object {
         const val BOARD_FRACTION = 0.75f
 

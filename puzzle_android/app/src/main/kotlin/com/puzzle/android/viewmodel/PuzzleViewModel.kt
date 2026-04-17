@@ -117,6 +117,10 @@ class PuzzleViewModel(application: Application) : AndroidViewModel(application) 
         _jigsaw.value = _jigsaw.value?.movePieceToBoard(id)
     }
 
+    fun movePieceToTray(id: Int) {
+        _jigsaw.value = _jigsaw.value?.movePieceToTray(id)
+    }
+
     fun newGame() {
         val defs  = _definitions.value
         val state = _jigsaw.value ?: return
