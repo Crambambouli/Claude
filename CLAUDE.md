@@ -11,6 +11,9 @@
 
 ## Git & Branches
 - Entwicklung immer auf dem angegebenen Feature-Branch (nie auf `main` committen).
+- **Der User muss einmalig den Feature-Branch auschecken**: `git checkout claude/android-jigsaw-puzzle-app-5oz48` (in PowerShell oder Android Studio → VCS → Git → Branches).
+- Danach genügt **`git pull`** in Android Studio für alle weiteren Updates.
+- Nach dem ersten Checkout oder nach größeren Build-Änderungen: **File → Sync Project with Gradle Files** in Android Studio.
 - Nach jedem Push: prüfen ob ein PR existiert; falls nicht, als **Draft-PR** anlegen.
 - Commit-Messages auf Deutsch, prägnant, mit `https://claude.ai/code/session_...` am Ende.
 
