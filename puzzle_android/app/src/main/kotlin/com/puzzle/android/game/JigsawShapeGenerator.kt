@@ -62,92 +62,87 @@ object JigsawShapeGenerator {
         }
     }
 
-    /**
-     * Builds the outline Path of one piece in a coordinate system where the
-     * grid cell occupies (0, 0) → (cellW, cellH).
-     * Tabs protrude outside the cell boundary; blanks indent inward.
-     * Use TAB_PAD to know how much the path extends beyond the cell boundary.
-     */
     fun createPiecePath(def: PieceDefinition, cellW: Float, cellH: Float): Path {
         val path = Path()
         path.moveTo(0f, 0f)
-
-        // Top edge: left→right, outward = UP (0, -1)
-        addEdge(path, 0f, 0f, cellW, 0f, def.top, 0f, -1f)
-
-        // Right edge: top→bottom, outward = RIGHT (1, 0)
-        addEdge(path, cellW, 0f, cellW, cellH, def.right, 1f, 0f)
-
-        // Bottom edge: right→left, outward = DOWN (0, 1)
-        addEdge(path, cellW, cellH, 0f, cellH, def.bottom, 0f, 1f)
-
-        // Left edge: bottom→top, outward = LEFT (-1, 0)
-        addEdge(path, 0f, cellH, 0f, 0f, def.left, -1f, 0f)
-
+        addEdge(path, 0f,    0f,    cellW, 0f,    def.top,    0f,  -1f)
+        addEdge(path, cellW, 0f,    cellW, cellH, def.right,  1f,   0f)
+        addEdge(path, cellW, cellH, 0f,   cellH,  def.bottom, 0f,   1f)
+        addEdge(path, 0f,    cellH, 0f,   0f,     def.left,  -1f,   0f)
         path.close()
         return path
     }
 
-    /** Fraction of edge length that the tab protrudes (before 1.15 peak factor). */
-    const val TAB_FRACTION = 0.18f
+    /** Peak connector protrusion as fraction of edge length. */
+    const val TAB_PEAK_FRACTION = 0.30f
 
-    /** Maximum protrusion as fraction of edge length (TAB_FRACTION × 1.15 peak). */
-    const val TAB_PEAK_FRACTION = 0.207f
+    /** Shoulder-dip depth as fraction of edge length (affects BLANK outward bump). */
+    const val SHOULDER_FRACTION = 0.04f
 
     private fun addEdge(
         path  : Path,
         x0    : Float, y0: Float,
         x1    : Float, y1: Float,
         edge  : EdgeType,
-        outNx : Float, outNy: Float      // unit outward normal
+        outNx : Float, outNy: Float
     ) {
         if (edge == EdgeType.FLAT) {
             path.lineTo(x1, y1)
             return
         }
 
-        val dx = x1 - x0
-        val dy = y1 - y0
+        val dx  = x1 - x0
+        val dy  = y1 - y0
         val len = sqrt(dx * dx + dy * dy)
-        val h   = len * TAB_FRACTION
-        val s   = if (edge == EdgeType.TAB) 1f else -1f   // TAB = outward, BLANK = inward
+        val s   = if (edge == EdgeType.TAB) 1f else -1f
 
-        // Helpers: point on edge at fraction t, optionally displaced outward by nFrac * h
+        // Point at fraction t along edge, displaced nf*len outward (s flips for BLANK)
         fun ex(t: Float) = x0 + dx * t
         fun ey(t: Float) = y0 + dy * t
-        fun px(t: Float, nf: Float) = ex(t) + outNx * h * nf * s
-        fun py(t: Float, nf: Float) = ey(t) + outNy * h * nf * s
+        fun px(t: Float, nf: Float) = ex(t) + outNx * len * nf * s
+        fun py(t: Float, nf: Float) = ey(t) + outNy * len * nf * s
 
-        // ── flat section until neck ───────────────────────────────────────────
-        path.lineTo(ex(0.34f), ey(0.34f))
+        // Flat section to left shoulder
+        path.lineTo(ex(0.35f), ey(0.35f))
 
-        // ── neck out → shoulder ──────────────────────────────────────────────
+        // Left shoulder dip (organic joint look), then rise to neck
         path.cubicTo(
-            px(0.35f, 0.00f), py(0.35f, 0.00f),
-            px(0.37f, 0.55f), py(0.37f, 0.55f),
-            px(0.40f, 0.90f), py(0.40f, 0.90f)
-        )
-
-        // ── over the bulge peak ──────────────────────────────────────────────
-        path.cubicTo(
-            px(0.43f, 1.10f), py(0.43f, 1.10f),
-            px(0.47f, 1.15f), py(0.47f, 1.15f),
-            px(0.50f, 1.15f), py(0.50f, 1.15f)   // peak
+            px(0.36f, -0.02f), py(0.36f, -0.02f),
+            px(0.38f, -0.04f), py(0.38f, -0.04f),
+            px(0.40f,  0.00f), py(0.40f,  0.00f)
         )
         path.cubicTo(
-            px(0.53f, 1.15f), py(0.53f, 1.15f),
-            px(0.57f, 1.10f), py(0.57f, 1.10f),
-            px(0.60f, 0.90f), py(0.60f, 0.90f)
+            px(0.41f,  0.06f), py(0.41f,  0.06f),
+            px(0.43f,  0.10f), py(0.43f,  0.10f),
+            px(0.45f,  0.10f), py(0.45f,  0.10f)
         )
 
-        // ── shoulder → neck back to edge ─────────────────────────────────────
+        // Round connector head — left arc to peak
         path.cubicTo(
-            px(0.63f, 0.55f), py(0.63f, 0.55f),
-            px(0.65f, 0.00f), py(0.65f, 0.00f),
-            ex(0.66f),        ey(0.66f)
+            px(0.45f,  0.22f), py(0.45f,  0.22f),
+            px(0.46f,  0.30f), py(0.46f,  0.30f),
+            px(0.50f,  0.30f), py(0.50f,  0.30f)
         )
 
-        // ── flat section to end ───────────────────────────────────────────────
+        // Round connector head — right arc from peak
+        path.cubicTo(
+            px(0.54f,  0.30f), py(0.54f,  0.30f),
+            px(0.55f,  0.22f), py(0.55f,  0.22f),
+            px(0.55f,  0.10f), py(0.55f,  0.10f)
+        )
+
+        // Descend neck, then right shoulder dip
+        path.cubicTo(
+            px(0.57f,  0.06f), py(0.57f,  0.06f),
+            px(0.59f,  0.00f), py(0.59f,  0.00f),
+            px(0.62f, -0.04f), py(0.62f, -0.04f)
+        )
+        path.cubicTo(
+            px(0.63f, -0.02f), py(0.63f, -0.02f),
+            px(0.65f,  0.00f), py(0.65f,  0.00f),
+            ex(0.65f),          ey(0.65f)
+        )
+
         path.lineTo(x1, y1)
     }
 }

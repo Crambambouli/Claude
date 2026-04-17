@@ -52,8 +52,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -156,8 +154,10 @@ fun PuzzleScreen(
                     val cellWPx   = boardW / state.cols
                     val cellHPx   = heightPx / state.rows
 
-                    val tabPadW = cellHPx * JigsawShapeGenerator.TAB_PEAK_FRACTION
-                    val tabPadH = cellWPx * JigsawShapeGenerator.TAB_PEAK_FRACTION
+                    val tabPadW   = cellHPx * JigsawShapeGenerator.TAB_PEAK_FRACTION  * 1.5f
+                    val tabPadH   = cellWPx * JigsawShapeGenerator.TAB_PEAK_FRACTION  * 1.5f
+                    val blankPadW = cellHPx * JigsawShapeGenerator.SHOULDER_FRACTION  * 1.5f
+                    val blankPadH = cellWPx * JigsawShapeGenerator.SHOULDER_FRACTION  * 1.5f
 
                     val paths = remember(state.rows, state.cols, cellWPx, cellHPx) {
                         definitions.associateBy(
@@ -231,10 +231,12 @@ fun PuzzleScreen(
                             )
 
                             if (path != null) {
-                                val padLeft  = if (def.left   == EdgeType.TAB) tabPadW else 0f
-                                val padTop   = if (def.top    == EdgeType.TAB) tabPadH else 0f
-                                val padRight = if (def.right  == EdgeType.TAB) tabPadW else 0f
-                                val padBot   = if (def.bottom == EdgeType.TAB) tabPadH else 0f
+                                fun edgePadW(e: EdgeType) = when (e) { EdgeType.TAB -> tabPadW; EdgeType.BLANK -> blankPadW; else -> 0f }
+                                fun edgePadH(e: EdgeType) = when (e) { EdgeType.TAB -> tabPadH; EdgeType.BLANK -> blankPadH; else -> 0f }
+                                val padLeft  = edgePadW(def.left)
+                                val padTop   = edgePadH(def.top)
+                                val padRight = edgePadW(def.right)
+                                val padBot   = edgePadH(def.bottom)
                                 val canvasW  = padLeft + cellWPx + padRight
                                 val canvasH  = padTop  + cellHPx + padBot
 
@@ -243,7 +245,6 @@ fun PuzzleScreen(
 
                                 val canvasDpW  = with(density) { canvasW.toDp() }
                                 val canvasDpH  = with(density) { canvasH.toDp() }
-                                val shadowElev = if (isDragging) 10.dp else if (!piece.isPlaced) 3.dp else 1.dp
 
                                 val offsetPath = remember(path, padLeft, padTop) {
                                     Path().apply { addPath(path, Offset(padLeft, padTop)) }
@@ -253,8 +254,6 @@ fun PuzzleScreen(
                                     Modifier
                                         .offset { IntOffset(leftPx.roundToInt(), topPx.roundToInt()) }
                                         .size(canvasDpW, canvasDpH)
-                                        .shadow(shadowElev, RoundedCornerShape(3.dp))
-                                        .clipToBounds()
                                         .pointerInput(piece.id, piece.isPlaced) {
                                             if (piece.isPlaced) return@pointerInput
                                             detectDragGestures(
@@ -418,7 +417,7 @@ private fun PieceCanvas(
             isDragging -> Color(0xFF1976D2)
             else       -> Color(0x66000000)
         }
-        drawPath(path, color = borderColor, style = Stroke(width = if (isPlaced) 2.5f else 1.5f))
+        drawPath(path, color = borderColor, style = Stroke(width = if (isPlaced) 3f else if (isDragging) 2.5f else 2f))
     }
 }
 
