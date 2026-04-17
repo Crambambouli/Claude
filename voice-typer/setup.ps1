@@ -94,7 +94,7 @@ Write-Host "==========================================" -ForegroundColor Green
 Write-Host " Fertig! Blitztext.lnk liegt auf dem Desktop." -ForegroundColor Green
 Write-Host "==========================================" -ForegroundColor Green
 Write-Host ""
-Write-Host "Log-Datei (nach Start): $env:APPDATA\Voice Typer\voice-typer.log" -ForegroundColor Yellow
+Write-Host "Log-Datei (nach Start): $env:APPDATA\Blitztext\voice-typer.log" -ForegroundColor Yellow
 Write-Host ""
 Write-Host "Starte Blitztext..." -ForegroundColor Cyan
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 faster-whisper CLI-Wrapper mit openai-whisper-kompatiblem Interface.
-Nutzung in Voice Typer: whisper_fast.py als Whisper-Pfad in den Einstellungen eintragen.
+Nutzung in Blitztext: whisper_fast.py als Whisper-Pfad in den Einstellungen eintragen.
 
 Installation: pip install faster-whisper
 """

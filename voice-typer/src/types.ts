@@ -12,7 +12,7 @@ export interface Settings {
   whisperLanguage: string;
   /** Anthropic-API-Schlüssel für Modi Plus/Rage/Emoji */
   apiKey: string;
-  /** Globaler Hotkey, z.B. "F8" */
+  /** Globaler Hotkey, z.B. "Ctrl+F8" */
   hotkey: string;
   /** Geräte-ID des Mikrofons (leer = Standard) */
   audioDevice: string;

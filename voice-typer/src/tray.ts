@@ -13,9 +13,9 @@ const STATE_LABEL: Record<AppState, string> = {
 };
 
 const STATE_TOOLTIP: Record<AppState, string> = {
-  idle:       'Voice Typer – Bereit (Ctrl+F8 = Aufnahme starten)',
-  recording:  'Voice Typer – Aufnahme läuft … (Ctrl+F8 = Stoppen)',
-  processing: 'Voice Typer – Verarbeitung …',
+  idle:       'Blitztext – Bereit (Ctrl+F8 = Aufnahme starten)',
+  recording:  'Blitztext – Aufnahme läuft … (Ctrl+F8 = Stoppen)',
+  processing: 'Blitztext – Verarbeitung …',
 };
 
 interface TrayOptions {
@@ -44,7 +44,7 @@ export class TrayManager {
     this.state = state;
     if (this.tray) {
       this.tray.setImage(this.getIcon(state));
-      this.tray.setToolTip(`Voice Typer [${this.mode}] – ${STATE_TOOLTIP[state]}`);
+      this.tray.setToolTip(`Blitztext [${this.mode}] – ${STATE_TOOLTIP[state]}`);
     }
     // Kein rebuild() – Win32-HMENU-Neuaufbau löst Fokus-Interaktionen aus
   }
@@ -94,7 +94,7 @@ export class TrayManager {
 
     this.tray.setContextMenu(menu);
     this.tray.setToolTip(
-      `Voice Typer [${this.mode}] – ${STATE_TOOLTIP[this.state]}`
+      `Blitztext [${this.mode}] – ${STATE_TOOLTIP[this.state]}`
     );
   }
 

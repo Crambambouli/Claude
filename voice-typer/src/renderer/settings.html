@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Voice Typer – Einstellungen</title>
+  <title>Blitztext – Einstellungen</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -113,7 +113,7 @@
   </style>
 </head>
 <body>
-<h1>⚙  Voice Typer – Einstellungen</h1>
+<h1>⚙  Blitztext – Einstellungen</h1>
 
 <!-- Whisper -->
 <div class="section">
@@ -121,7 +121,7 @@
   <div class="field">
     <label for="whisperPath">Whisper-Pfad (leer = aus PATH)</label>
     <input id="whisperPath" type="text" placeholder="z.B. C:\Python311\Scripts\whisper.exe">
-    <div class="hint">Python-Paket installieren: <code>pip install openai-whisper</code></div>
+    <div class="hint">Python-Paket installieren: <code>pip install faster-whisper</code></div>
     <button class="check-btn" onclick="checkWhisper()">Installation prüfen</button>
     <div id="checkResult" class="check-result"></div>
   </div>
@@ -163,7 +163,7 @@
   <div class="section-title">Hotkey &amp; Audio</div>
   <div class="field">
     <label for="hotkey">Globaler Hotkey</label>
-    <input id="hotkey" type="text" placeholder="F8">
+    <input id="hotkey" type="text" placeholder="Ctrl+F8">
     <div class="hint">Beispiele: F8, F9, Alt+F8, Ctrl+Shift+R</div>
   </div>
   <div class="field">
@@ -190,7 +190,7 @@
     document.getElementById('whisperModel').value    = s.whisperModel    ?? 'base';
     document.getElementById('whisperLanguage').value = s.whisperLanguage ?? 'auto';
     document.getElementById('apiKey').value          = s.apiKey          ?? '';
-    document.getElementById('hotkey').value          = s.hotkey          ?? 'F8';
+    document.getElementById('hotkey').value          = s.hotkey          ?? 'Ctrl+F8';
     document.getElementById('audioDevice').value     = s.audioDevice     ?? '';
   });
 
@@ -221,7 +221,7 @@
       whisperModel:    document.getElementById('whisperModel').value,
       whisperLanguage: document.getElementById('whisperLanguage').value,
       apiKey:          document.getElementById('apiKey').value.trim(),
-      hotkey:          document.getElementById('hotkey').value.trim() || 'F8',
+      hotkey:          document.getElementById('hotkey').value.trim() || 'Ctrl+F8',
       audioDevice:     document.getElementById('audioDevice').value,
     });
     window.close();

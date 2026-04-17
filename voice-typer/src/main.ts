@@ -40,8 +40,8 @@ class VoiceTyper {
   // ─── Init ──────────────────────────────────────────────────────────────────
 
   async init(): Promise<void> {
-    app.setName('Voice Typer');
-    if (process.platform === 'win32') app.setAppUserModelId('com.voicetyper.app');
+    app.setName('Blitztext');
+    if (process.platform === 'win32') app.setAppUserModelId('com.blitztext.app');
 
     // Verhindere, dass der App bei Fenster-Schließen beendet wird (Tray-App)
     app.on('window-all-closed', () => { /* noop – Tray-App läuft weiter */ });
@@ -86,7 +86,7 @@ class VoiceTyper {
     this.setupIPC();
 
     logger.info('VoiceTyper bereit.');
-    this.notify('Voice Typer gestartet', `Hotkey: ${s.hotkey || 'Ctrl+F8'} – Modus: ${this.currentMode}`);
+    this.notify('Blitztext gestartet', `Hotkey: ${s.hotkey || 'Ctrl+F8'} – Modus: ${this.currentMode}`);
 
     // Whisper-Server im Hintergrund vorwärmen (Modell ins RAM laden)
     this.whisper.warmUp().catch(err =>
@@ -261,7 +261,7 @@ class SettingsWindow {
       width:     560,
       height:    560,
       resizable: false,
-      title:     'Voice Typer – Einstellungen',
+      title:     'Blitztext – Einstellungen',
       show:      false,
       webPreferences: {
         preload:          fs.existsSync(preloadPath) ? preloadPath : undefined,
