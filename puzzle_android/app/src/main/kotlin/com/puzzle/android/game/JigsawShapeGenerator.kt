@@ -74,7 +74,7 @@ object JigsawShapeGenerator {
     }
 
     /** Peak connector protrusion as fraction of edge length. */
-    const val TAB_PEAK_FRACTION = 0.34f
+    const val TAB_PEAK_FRACTION = 0.36f
 
     private fun addEdge(
         path  : Path,
@@ -104,29 +104,29 @@ object JigsawShapeGenerator {
 
         // Rise to left neck base
         path.cubicTo(
-            px(0.37f, 0.00f), py(0.37f, 0.00f),
-            px(0.42f, 0.00f), py(0.42f, 0.00f),
-            px(0.44f, 0.10f), py(0.44f, 0.10f)
+            px(0.38f, 0.00f), py(0.38f, 0.00f),
+            px(0.43f, 0.05f), py(0.43f, 0.05f),
+            px(0.43f, 0.12f), py(0.43f, 0.12f)
         )
 
-        // Left arc — CP1 at t=0.40 (left of neck) forces head to bulge wider than neck
+        // Left arc — CP1 at t=0.28 forces head ≈2× wider than neck (mushroom shape)
         path.cubicTo(
-            px(0.40f, 0.20f), py(0.40f, 0.20f),
-            px(0.44f, 0.34f), py(0.44f, 0.34f),
-            px(0.50f, 0.34f), py(0.50f, 0.34f)
+            px(0.28f, 0.22f), py(0.28f, 0.22f),
+            px(0.40f, 0.36f), py(0.40f, 0.36f),
+            px(0.50f, 0.36f), py(0.50f, 0.36f)
         )
 
         // Right arc — mirror of left
         path.cubicTo(
-            px(0.56f, 0.34f), py(0.56f, 0.34f),
-            px(0.60f, 0.20f), py(0.60f, 0.20f),
-            px(0.56f, 0.10f), py(0.56f, 0.10f)
+            px(0.60f, 0.36f), py(0.60f, 0.36f),
+            px(0.72f, 0.22f), py(0.72f, 0.22f),
+            px(0.57f, 0.12f), py(0.57f, 0.12f)
         )
 
         // Descent from right neck to right shoulder
         path.cubicTo(
-            px(0.58f, 0.00f), py(0.58f, 0.00f),
-            px(0.63f, 0.00f), py(0.63f, 0.00f),
+            px(0.57f, 0.05f), py(0.57f, 0.05f),
+            px(0.62f, 0.00f), py(0.62f, 0.00f),
             ex(0.63f),         ey(0.63f)
         )
 

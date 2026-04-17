@@ -33,7 +33,8 @@ data class JigsawState(
 
     /**
      * Move piece [id] to fractional position (x, y).
-     * Priority: 1) absolute grid snap, 2) relative snap to adjacent floating piece, 3) free placement.
+     * Priority: 1) relative snap to adjacent board piece, 2) absolute grid snap, 3) free placement.
+     * Relative snap has priority so two floating pieces always connect before snapping to grid.
      */
     fun movePiece(id: Int, x: Float, y: Float): JigsawState {
         val piece = pieces.first { it.id == id }
@@ -42,23 +43,14 @@ data class JigsawState(
         val cellW  = BOARD_FRACTION / cols.toFloat()
         val cellH  = 1f / rows.toFloat()
 
-        // 1. Absolute snap to correct grid position
-        val (cx, cy) = correctCenter(piece)
-        val absFactor = if (hasAnyPlacedNeighbor(piece)) 0.65f else 0.50f
-        if (abs(x - cx) < cellW * absFactor && abs(y - cy) < cellH * absFactor) {
-            return copy(pieces = pieces.map {
-                if (it.id == id) it.copy(x = cx, y = cy, isPlaced = true) else it
-            })
-        }
-
-        // 2. Relative snap to an adjacent piece that is on the board (placed or floating)
+        // 1. Relative snap — higher priority so floating pieces connect correctly
         val relTarget = pieces
             .filter { n -> !n.isInTray && n.id != id &&
                 abs(n.definition.row - r) + abs(n.definition.col - c) == 1 }
             .mapNotNull { n ->
                 val tx = n.x + (c - n.definition.col) * cellW
                 val ty = n.y + (r - n.definition.row) * cellH
-                if (abs(x - tx) < cellW * 0.55f && abs(y - ty) < cellH * 0.55f)
+                if (abs(x - tx) < cellW * 0.70f && abs(y - ty) < cellH * 0.70f)
                     Triple(n.isPlaced, tx, ty) else null
             }
             .minByOrNull { t -> abs(x - t.second) + abs(y - t.third) }
@@ -68,6 +60,15 @@ data class JigsawState(
             val ty = relTarget.third.coerceIn(0.01f, 0.99f)
             return copy(pieces = pieces.map {
                 if (it.id == id) it.copy(x = tx, y = ty, isPlaced = relTarget.first) else it
+            })
+        }
+
+        // 2. Absolute snap to correct grid position
+        val (cx, cy) = correctCenter(piece)
+        val absFactor = if (hasAnyPlacedNeighbor(piece)) 0.65f else 0.50f
+        if (abs(x - cx) < cellW * absFactor && abs(y - cy) < cellH * absFactor) {
+            return copy(pieces = pieces.map {
+                if (it.id == id) it.copy(x = cx, y = cy, isPlaced = true) else it
             })
         }
 
