@@ -8,8 +8,12 @@ import { logger } from './logger';
 
 const execFileAsync = promisify(execFile);
 
-// VBScript: Ctrl+V simulieren – kein PowerShell, kein .NET-Overhead
-const VBS_SEND_CTRL_V = 'CreateObject("WScript.Shell").SendKeys "^v"';
+// VBScript: Ctrl+V simulieren – kein PowerShell, kein .NET-Overhead.
+// Die Klammerschreibweise "^(v)" stellt sicher, dass der Ctrl-Modifier nur
+// für 'v' aktiv ist und sauber losgelassen wird. Ohne Klammern bleibt Ctrl
+// in WSH/SendKeys gelegentlich "hängen" und die nächste Taste im aktiven
+// Fenster wird Ctrl-modifiziert (z.B. Ctrl+W → schließt Fenster/Tab).
+const VBS_SEND_CTRL_V = 'CreateObject("WScript.Shell").SendKeys "^(v)"';
 
 export class ClipboardManager {
   /** Setzt den Text in die Zwischenablage. */

@@ -16,6 +16,14 @@ export class SettingsManager {
         const parsed = JSON.parse(raw) as Partial<Settings>;
         this.data = { ...DEFAULT_SETTINGS, ...parsed };
         logger.info(`Settings geladen von: ${this.filePath}`);
+
+        // Migration: der nackte F8-Hotkey kollidiert mit WH_KEYBOARD_LL-Hooks
+        // anderer Apps und schließt dort Fenster. Automatisch auf Ctrl+F8 heben.
+        if (this.data.hotkey === 'F8') {
+          this.data.hotkey = 'Ctrl+F8';
+          this.save();
+          logger.info('Hotkey-Migration: F8 → Ctrl+F8');
+        }
       } else {
         logger.info('Keine config.json gefunden, nutze Defaults.');
         this.save(); // Schreibe Defaults für den Nutzer

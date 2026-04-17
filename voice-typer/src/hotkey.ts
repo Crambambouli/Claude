@@ -1,4 +1,4 @@
-import { globalShortcut } from 'electron';
+import { globalShortcut, Notification } from 'electron';
 import { EventEmitter }   from 'events';
 import { logger }         from './logger';
 
@@ -17,13 +17,24 @@ export class HotkeyManager extends EventEmitter {
   private register(hotkey: string): void {
     if (this.currentKey) this.unregister();
 
-    const ok = globalShortcut.register(hotkey, () => {
-      logger.debug(`Hotkey ausgelöst: ${hotkey}`);
-      this.emit('triggered');
-    });
+    let ok = false;
+    try {
+      ok = globalShortcut.register(hotkey, () => {
+        logger.debug(`Hotkey ausgelöst: ${hotkey}`);
+        this.emit('triggered');
+      });
+    } catch (err) {
+      logger.error(`Hotkey "${hotkey}" ungültig.`, err);
+    }
 
     if (!ok) {
-      logger.warn(`Hotkey "${hotkey}" konnte nicht registriert werden (bereits belegt?).`);
+      logger.warn(`Hotkey "${hotkey}" konnte nicht registriert werden (bereits belegt oder ungültig).`);
+      if (Notification.isSupported()) {
+        new Notification({
+          title: 'Blitztext – Hotkey fehlgeschlagen',
+          body:  `Hotkey "${hotkey}" konnte nicht registriert werden. Wähle einen anderen in den Einstellungen.`,
+        }).show();
+      }
     } else {
       this.currentKey = hotkey;
       logger.info(`Hotkey registriert: ${hotkey}`);
