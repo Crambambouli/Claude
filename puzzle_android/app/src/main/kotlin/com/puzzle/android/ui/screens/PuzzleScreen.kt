@@ -5,24 +5,24 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -47,6 +47,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
@@ -55,6 +56,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -65,6 +67,7 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
@@ -123,36 +126,12 @@ fun PuzzleScreen(
         val state = jigsaw
         var isMinimized by remember { mutableStateOf(false) }
 
-        Box(Modifier.fillMaxSize().padding(padding)) {
-            if (state != null && definitions.isNotEmpty()) {
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.TopEnd)
-                        .padding(8.dp),
-                    horizontalAlignment = Alignment.End
-                ) {
-                    IconButton(
-                        onClick = { isMinimized = !isMinimized },
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(Icons.Default.UnfoldLess, contentDescription = "Minimieren", tint = MaterialTheme.colorScheme.primary)
-                    }
-                    IconButton(
-                        onClick = { vm.backToSetup(); navController.popBackStack() },
-                        modifier = Modifier.size(40.dp)
-                    ) {
-                        Icon(Icons.Filled.Close, contentDescription = "Schließen", tint = MaterialTheme.colorScheme.primary)
-                    }
-                }
+        if (state == null || definitions.isEmpty()) {
+            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
+                Text("Kein Puzzle geladen")
             }
-            }
-
-            if (state == null || definitions.isEmpty()) {
-                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Kein Puzzle geladen")
-                }
-            } else {
-                Column(Modifier.fillMaxSize()) {
+        } else {
+            Column(Modifier.fillMaxSize().padding(padding)) {
 
                 // ── Win banner ───────────────────────────────────────────────
                 if (!isMinimized) {
@@ -174,164 +153,227 @@ fun PuzzleScreen(
                     }
                 }
 
-                // ── Main play area (board only) ──────────────────────────────
+                // ── Main play area ───────────────────────────────────────────
                 if (!isMinimized) {
-                    BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                        val widthPx  = constraints.maxWidth.toFloat()
-                        val heightPx = constraints.maxHeight.toFloat()
-                        val density  = LocalDensity.current
+                    Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        var boardScale  by remember { mutableFloatStateOf(1f) }
+                        var boardOffset by remember { mutableStateOf(Offset.Zero) }
 
-                        val boardFrac = JigsawState.BOARD_FRACTION
-                        val boardW    = widthPx * boardFrac
-                        val cellWPx   = boardW / state.cols
-                        val cellHPx   = heightPx / state.rows
-
-                        val tabPadW = cellHPx * JigsawShapeGenerator.TAB_PEAK_FRACTION * 1.5f
-                        val tabPadH = cellWPx * JigsawShapeGenerator.TAB_PEAK_FRACTION * 1.5f
-
-                        val paths = remember(state.rows, state.cols, cellWPx, cellHPx) {
-                            definitions.associateBy(
-                                { it.row * state.cols + it.col },
-                                { JigsawShapeGenerator.createPiecePath(it, cellWPx, cellHPx) }
-                            )
-                        }
-
-                        val dragOffsets = remember { mutableStateMapOf<Int, Offset>() }
-                        var topId by remember { mutableIntStateOf(-1) }
-
-                        // ── Board background & ghost grid ────────────────────────
-                        Canvas(modifier = Modifier.fillMaxSize()) {
-                            drawRect(
-                                color   = Color(0xFFF0F0F8),
-                                topLeft = Offset(boardW, 0f),
-                                size    = Size(widthPx - boardW, heightPx)
-                            )
-                            for (r in 0 until state.rows) {
-                                for (c in 0 until state.cols) {
-                                    val placed = state.pieces.any {
-                                        it.definition.row == r && it.definition.col == c && it.isPlaced
+                        BoxWithConstraints(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .pointerInput(Unit) {
+                                    detectTransformGestures { _, pan, zoom, _ ->
+                                        boardScale = (boardScale * zoom).coerceIn(0.3f, 5f)
+                                        boardOffset += pan
                                     }
-                                    drawRect(
-                                        color   = if (placed) Color(0x1800C853) else Color(0x12000000),
-                                        topLeft = Offset(c * cellWPx, r * cellHPx),
-                                        size    = Size(cellWPx, cellHPx),
-                                        style   = Stroke(1.5f)
+                                }
+                        ) {
+                            val widthPx  = constraints.maxWidth.toFloat()
+                            val heightPx = constraints.maxHeight.toFloat()
+                            val density  = LocalDensity.current
+
+                            val boardFrac = JigsawState.BOARD_FRACTION
+                            val boardW    = widthPx * boardFrac
+                            val cellWPx   = boardW / state.cols
+                            val cellHPx   = heightPx / state.rows
+
+                            val tabPadW = cellHPx * JigsawShapeGenerator.TAB_PEAK_FRACTION * 1.5f
+                            val tabPadH = cellWPx * JigsawShapeGenerator.TAB_PEAK_FRACTION * 1.5f
+
+                            val paths = remember(state.rows, state.cols, cellWPx, cellHPx) {
+                                definitions.associateBy(
+                                    { it.row * state.cols + it.col },
+                                    { JigsawShapeGenerator.createPiecePath(it, cellWPx, cellHPx) }
+                                )
+                            }
+
+                            val dragOffsets = remember { mutableStateMapOf<Int, Offset>() }
+                            var topId by remember { mutableIntStateOf(-1) }
+
+                            // ── Transformierter Board-Bereich ────────────────
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        scaleX          = boardScale
+                                        scaleY          = boardScale
+                                        translationX    = boardOffset.x
+                                        translationY    = boardOffset.y
+                                        transformOrigin = TransformOrigin(0f, 0f)
+                                    }
+                            ) {
+                                Canvas(modifier = Modifier.fillMaxSize()) {
+                                    for (r in 0 until state.rows) {
+                                        for (c in 0 until state.cols) {
+                                            val placed = state.pieces.any {
+                                                it.definition.row == r && it.definition.col == c && it.isPlaced
+                                            }
+                                            drawRect(
+                                                color   = if (placed) Color(0x1800C853) else Color(0x12000000),
+                                                topLeft = Offset(c * cellWPx, r * cellHPx),
+                                                size    = Size(cellWPx, cellHPx),
+                                                style   = Stroke(1.5f)
+                                            )
+                                        }
+                                    }
+                                    drawLine(
+                                        color       = Color(0x33000000),
+                                        start       = Offset(boardW, 0f),
+                                        end         = Offset(boardW, heightPx),
+                                        strokeWidth = 1f
                                     )
                                 }
-                            }
-                            drawLine(
-                                color       = Color(0x33000000),
-                                start       = Offset(boardW, 0f),
-                                end         = Offset(boardW, heightPx),
-                                strokeWidth = 1f
-                            )
-                        }
 
-                        // ── Board pieces (not in tray) ───────────────────────────
-                        val boardPieces = remember(state.pieces, topId) {
-                            state.pieces
-                                .filter { !it.isInTray }
-                                .sortedWith(compareBy {
-                                    when {
-                                        it.id == topId -> 2
-                                        !it.isPlaced   -> 1
-                                        else           -> 0
-                                    }
-                                })
-                        }
+                                val boardPieces = remember(state.pieces, topId) {
+                                    state.pieces
+                                        .filter { !it.isInTray }
+                                        .sortedWith(compareBy {
+                                            when {
+                                                it.id == topId -> 2
+                                                !it.isPlaced   -> 1
+                                                else           -> 0
+                                            }
+                                        })
+                                }
 
-                        boardPieces.forEach { piece ->
-                            key(piece.id) {
-                                val drag       = dragOffsets[piece.id] ?: Offset.Zero
-                                val def        = piece.definition
-                                val path       = paths[piece.id]
-                                val isDragging = dragOffsets.containsKey(piece.id)
+                                boardPieces.forEach { piece ->
+                                    key(piece.id) {
+                                        val drag       = dragOffsets[piece.id] ?: Offset.Zero
+                                        val def        = piece.definition
+                                        val path       = paths[piece.id]
+                                        val isDragging = dragOffsets.containsKey(piece.id)
 
-                                val (snapFX, snapFY) = state.correctCenter(piece)
-                                val animSpec: AnimationSpec<Float> =
-                                    if (piece.isPlaced) spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)
-                                    else snap()
-                                val screenCX by animateFloatAsState(
-                                    targetValue   = if (piece.isPlaced) snapFX * widthPx  else piece.x * widthPx  + drag.x,
-                                    animationSpec = animSpec, label = "cx"
-                                )
-                                val screenCY by animateFloatAsState(
-                                    targetValue   = if (piece.isPlaced) snapFY * heightPx else piece.y * heightPx + drag.y,
-                                    animationSpec = animSpec, label = "cy"
-                                )
+                                        val (snapFX, snapFY) = state.correctCenter(piece)
+                                        val animSpec: AnimationSpec<Float> =
+                                            if (piece.isPlaced) spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)
+                                            else snap()
+                                        val screenCX by animateFloatAsState(
+                                            targetValue   = if (piece.isPlaced) snapFX * widthPx  else piece.x * widthPx  + drag.x,
+                                            animationSpec = animSpec, label = "cx"
+                                        )
+                                        val screenCY by animateFloatAsState(
+                                            targetValue   = if (piece.isPlaced) snapFY * heightPx else piece.y * heightPx + drag.y,
+                                            animationSpec = animSpec, label = "cy"
+                                        )
 
-                                if (path != null) {
-                                    fun edgePadW(e: EdgeType) = if (e == EdgeType.BLANK) tabPadW else 0f
-                                    fun edgePadH(e: EdgeType) = if (e == EdgeType.BLANK) tabPadH else 0f
-                                    val padLeft  = edgePadW(def.left)
-                                    val padTop   = edgePadH(def.top)
-                                    val padRight = edgePadW(def.right)
-                                    val padBot   = edgePadH(def.bottom)
-                                    val canvasW  = padLeft + cellWPx + padRight
-                                    val canvasH  = padTop  + cellHPx + padBot
+                                        if (path != null) {
+                                            fun edgePadW(e: EdgeType) = if (e == EdgeType.BLANK) tabPadW else 0f
+                                            fun edgePadH(e: EdgeType) = if (e == EdgeType.BLANK) tabPadH else 0f
+                                            val padLeft  = edgePadW(def.left)
+                                            val padTop   = edgePadH(def.top)
+                                            val padRight = edgePadW(def.right)
+                                            val padBot   = edgePadH(def.bottom)
+                                            val canvasW  = padLeft + cellWPx + padRight
+                                            val canvasH  = padTop  + cellHPx + padBot
 
-                                    val leftPx = screenCX - cellWPx / 2f - padLeft
-                                    val topPx  = screenCY - cellHPx / 2f - padTop
+                                            val leftPx = screenCX - cellWPx / 2f - padLeft
+                                            val topPx  = screenCY - cellHPx / 2f - padTop
 
-                                    val canvasDpW  = with(density) { canvasW.toDp() }
-                                    val canvasDpH  = with(density) { canvasH.toDp() }
+                                            val canvasDpW  = with(density) { canvasW.toDp() }
+                                            val canvasDpH  = with(density) { canvasH.toDp() }
 
-                                    val offsetPath = remember(path, padLeft, padTop) {
-                                        Path().apply { addPath(path, Offset(padLeft, padTop)) }
-                                    }
+                                            val offsetPath = remember(path, padLeft, padTop) {
+                                                Path().apply { addPath(path, Offset(padLeft, padTop)) }
+                                            }
 
-                                    Box(
-                                        Modifier
-                                            .offset { IntOffset(leftPx.roundToInt(), topPx.roundToInt()) }
-                                            .size(canvasDpW, canvasDpH)
-                                            .pointerInput(piece.id, piece.isPlaced) {
-                                                if (piece.isPlaced) return@pointerInput
-                                                detectDragGestures(
-                                                    onDragStart = { topId = piece.id },
-                                                    onDrag = { change, amount ->
-                                                        change.consume()
-                                                        dragOffsets[piece.id] =
-                                                            (dragOffsets[piece.id] ?: Offset.Zero) + amount
-                                                    },
-                                                    onDragEnd = {
-                                                        val off  = dragOffsets.remove(piece.id) ?: Offset.Zero
-                                                        val newX = (piece.x * widthPx  + off.x) / widthPx
-                                                        val newY = (piece.y * heightPx + off.y) / heightPx
-                                                        topId = -1
-                                                        vm.onPieceDropped(piece.id, newX, newY)
-                                                    },
-                                                    onDragCancel = {
-                                                        dragOffsets.remove(piece.id)
-                                                        topId = -1
+                                            Box(
+                                                Modifier
+                                                    .offset { IntOffset(leftPx.roundToInt(), topPx.roundToInt()) }
+                                                    .size(canvasDpW, canvasDpH)
+                                                    .pointerInput(piece.id, piece.isPlaced) {
+                                                        if (piece.isPlaced) return@pointerInput
+                                                        detectDragGestures(
+                                                            onDragStart = { topId = piece.id },
+                                                            onDrag = { change, amount ->
+                                                                change.consume()
+                                                                // Divide by boardScale so drag matches visual position
+                                                                val scaled = amount / boardScale
+                                                                dragOffsets[piece.id] =
+                                                                    (dragOffsets[piece.id] ?: Offset.Zero) + scaled
+                                                            },
+                                                            onDragEnd = {
+                                                                val off  = dragOffsets.remove(piece.id) ?: Offset.Zero
+                                                                val newX = (piece.x * widthPx  + off.x) / widthPx
+                                                                val newY = (piece.y * heightPx + off.y) / heightPx
+                                                                topId = -1
+                                                                vm.onPieceDropped(piece.id, newX, newY)
+                                                            },
+                                                            onDragCancel = {
+                                                                dragOffsets.remove(piece.id)
+                                                                topId = -1
+                                                            }
+                                                        )
                                                     }
+                                            ) {
+                                                PieceCanvas(
+                                                    piece      = piece,
+                                                    def        = def,
+                                                    path       = offsetPath,
+                                                    bitmap     = bitmap,
+                                                    canvasW    = canvasW,
+                                                    canvasH    = canvasH,
+                                                    padLeft    = padLeft,
+                                                    padTop     = padTop,
+                                                    cellWPx    = cellWPx,
+                                                    cellHPx    = cellHPx,
+                                                    totalCols  = state.cols,
+                                                    totalRows  = state.rows,
+                                                    isPlaced   = piece.isPlaced,
+                                                    isDragging = isDragging
                                                 )
                                             }
-                                    ) {
-                                        PieceCanvas(
-                                            piece      = piece,
-                                            def        = def,
-                                            path       = offsetPath,
-                                            bitmap     = bitmap,
-                                            canvasW    = canvasW,
-                                            canvasH    = canvasH,
-                                            padLeft    = padLeft,
-                                            padTop     = padTop,
-                                            cellWPx    = cellWPx,
-                                            cellHPx    = cellHPx,
-                                            totalCols  = state.cols,
-                                            totalRows  = state.rows,
-                                            isPlaced   = piece.isPlaced,
-                                            isDragging = isDragging
+                                        }
+                                    }
+                                }
+                            }
+
+                            // ── Vorschaubild (nicht transformiert) ───────────
+                            if (bitmap != null) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.BottomStart)
+                                        .padding(8.dp)
+                                        .size(110.dp, 74.dp)
+                                        .clip(RoundedCornerShape(4.dp))
+                                        .border(1.dp, Color(0x44000000), RoundedCornerShape(4.dp))
+                                        .background(Color.White)
+                                ) {
+                                    Canvas(modifier = Modifier.fillMaxSize()) {
+                                        drawImage(
+                                            image     = bitmap,
+                                            dstOffset = IntOffset.Zero,
+                                            dstSize   = IntSize(size.width.toInt(), size.height.toInt())
                                         )
                                     }
                                 }
                             }
-                        }
 
+                            // ── Minimieren / Schließen ───────────────────────
+                            Column(
+                                modifier            = Modifier.align(Alignment.TopEnd).padding(4.dp),
+                                horizontalAlignment = Alignment.End
+                            ) {
+                                IconButton(
+                                    onClick  = { isMinimized = !isMinimized },
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(Icons.Default.UnfoldLess, contentDescription = "Minimieren",
+                                        tint = MaterialTheme.colorScheme.primary)
+                                }
+                                IconButton(
+                                    onClick  = { vm.backToSetup(); navController.popBackStack() },
+                                    modifier = Modifier.size(40.dp)
+                                ) {
+                                    Icon(Icons.Filled.Close, contentDescription = "Schließen",
+                                        tint = MaterialTheme.colorScheme.primary)
+                                }
+                            }
+                        }
                     }
                 }
 
-                // ── Tray: scrollable thumbnail grid (bottom) ─────────────────
+                // ── Tray: scrollbares Thumbnail-Gitter (unten) ──────────────
                 val trayPieces = remember(state.pieces) {
                     state.pieces.filter { it.isInTray }
                 }
@@ -339,7 +381,7 @@ fun PuzzleScreen(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(100.dp)
+                        .height(72.dp)
                         .background(Color(0xFFF0F0F8))
                 ) {
                     if (trayPieces.isEmpty()) {
@@ -353,11 +395,11 @@ fun PuzzleScreen(
                         }
                     } else {
                         LazyVerticalGrid(
-                            columns               = GridCells.Fixed(6),
+                            columns               = GridCells.Adaptive(minSize = 56.dp),
                             modifier              = Modifier.fillMaxSize(),
-                            contentPadding        = PaddingValues(4.dp),
-                            horizontalArrangement = Arrangement.spacedBy(3.dp),
-                            verticalArrangement   = Arrangement.spacedBy(3.dp)
+                            contentPadding        = PaddingValues(2.dp),
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                            verticalArrangement   = Arrangement.spacedBy(2.dp)
                         ) {
                             items(trayPieces, key = { it.id }) { piece ->
                                 PieceThumbnail(
@@ -375,19 +417,19 @@ fun PuzzleScreen(
 
                 // ── Bottom controls ──────────────────────────────────────────
                 Row(
-                    modifier          = Modifier.fillMaxWidth().padding(8.dp),
+                    modifier          = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     OutlinedButton(
                         onClick  = { vm.backToSetup(); navController.popBackStack() },
-                        modifier = Modifier.height(44.dp)
+                        modifier = Modifier.height(40.dp)
                     ) { Text("Motiv") }
 
                     Spacer(Modifier.weight(1f))
 
                     Button(
                         onClick  = vm::newGame,
-                        modifier = Modifier.height(44.dp)
+                        modifier = Modifier.height(40.dp)
                     ) { Text("Neu mischen") }
                 }
             }
@@ -472,7 +514,7 @@ private fun PieceThumbnail(
     Box(
         modifier = Modifier
             .aspectRatio(1f)
-            .clip(RoundedCornerShape(4.dp))
+            .clip(RoundedCornerShape(3.dp))
             .clickable(onClick = onClick)
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
