@@ -3,10 +3,11 @@
 ## Sprache
 - Alle Antworten **immer auf Deutsch**, unabhängig von der Eingabesprache.
 
-## Grundprinzip: Claude führt alles selbst aus
-- Der User testet, baut und führt **nichts lokal aus** — das ist Claudes Aufgabe.
-- Claude baut, testet, pusht und überwacht CI selbst.
-- Wenn ein Build fehlschlägt: Fehler analysieren, fixen, erneut pushen — ohne Rückfrage, solange die Ursache klar ist.
+## Grundprinzip: Claude erledigt alles, was die Technik möglich macht
+- Der User führt **nichts selbst aus** — das ist ausschließlich Claudes Aufgabe.
+- Der einzige Schritt des Users: **`git pull`** in Android Studio, um den fertigen Stand zu holen.
+- Claude schreibt Code, committet, pusht, überwacht CI, analysiert Fehler, fixt und pusht erneut — vollautomatisch, ohne Rückfrage, solange die Ursache klar ist.
+- Nach jedem erfolgreichen CI-Build ist die APK als Artifact abrufbar; der User installiert sie per Dateiübertragung oder ADB.
 
 ## Git & Branches
 - Entwicklung immer auf dem angegebenen Feature-Branch (nie auf `main` committen).
