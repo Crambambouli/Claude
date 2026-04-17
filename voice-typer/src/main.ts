@@ -195,7 +195,8 @@ class VoiceTyper {
       logger.info(`Finaler Text: "${result.slice(0, 100)}"`);
 
       this.lastText = result.slice(0, 120);
-      this.clipboard.setText(result);
+      const textToPaste = /\s$/.test(result) ? result : result + ' ';
+      this.clipboard.setText(textToPaste);
       await new Promise(r => setTimeout(r, 300));
       await this.clipboard.simulatePaste();
 
