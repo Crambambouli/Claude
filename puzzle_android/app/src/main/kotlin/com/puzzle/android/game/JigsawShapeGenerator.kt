@@ -94,7 +94,7 @@ object JigsawShapeGenerator {
         val dx  = x1 - x0
         val dy  = y1 - y0
         val len = sqrt(dx * dx + dy * dy)
-        val s   = if (edge == EdgeType.TAB) 1f else -1f
+        val s   = if (edge == EdgeType.BLANK) 1f else -1f
 
         // Point at fraction t along edge, displaced nf*len outward (s flips for BLANK)
         fun ex(t: Float) = x0 + dx * t

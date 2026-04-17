@@ -231,8 +231,8 @@ fun PuzzleScreen(
                             )
 
                             if (path != null) {
-                                fun edgePadW(e: EdgeType) = when (e) { EdgeType.TAB -> tabPadW; EdgeType.BLANK -> blankPadW; else -> 0f }
-                                fun edgePadH(e: EdgeType) = when (e) { EdgeType.TAB -> tabPadH; EdgeType.BLANK -> blankPadH; else -> 0f }
+                                fun edgePadW(e: EdgeType) = when (e) { EdgeType.BLANK -> tabPadW; EdgeType.TAB -> blankPadW; else -> 0f }
+                                fun edgePadH(e: EdgeType) = when (e) { EdgeType.BLANK -> tabPadH; EdgeType.TAB -> blankPadH; else -> 0f }
                                 val padLeft  = edgePadW(def.left)
                                 val padTop   = edgePadH(def.top)
                                 val padRight = edgePadW(def.right)
