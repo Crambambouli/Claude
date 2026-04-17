@@ -284,7 +284,7 @@ fun PuzzleScreen(
                                             Modifier
                                                 .offset { IntOffset(leftPx.roundToInt(), topPx.roundToInt()) }
                                                 .size(canvasDpW, canvasDpH)
-                                                .pointerInput(piece.id, piece.isPlaced) {
+                                                .pointerInput(piece.id, piece.isPlaced, piece.groupId) {
                                                     if (piece.isPlaced) return@pointerInput
                                                     detectDragGestures(
                                                         onDragStart = { topId = piece.id },
