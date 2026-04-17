@@ -1,0 +1,67 @@
+{
+  "name": "voice-typer",
+  "version": "1.0.0",
+  "description": "Blitztext – Spracheingabe mit lokalem Whisper STT",
+  "main": "dist/main.js",
+  "scripts": {
+    "prebuild": "node scripts/create-icons.js",
+    "build": "tsc",
+    "postbuild": "node scripts/post-build.js",
+    "dev": "npm run build && electronmon dist/main.js",
+    "watch": "tsc -w --preserveWatchOutput",
+    "start": "electron dist/main.js",
+    "package": "npm run build && electron-builder --win --x64",
+    "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.27.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "electron": "^30.0.4",
+    "electronmon": "^2.0.2",
+    "typescript": "^5.5.2",
+    "electron-builder": "^24.13.3"
+  },
+  "electronmon": {
+    "patterns": ["dist/**/*", "assets/**/*"],
+    "ignore": ["**/*.map"]
+  },
+  "build": {
+    "appId": "com.blitztext.app",
+    "productName": "Blitztext",
+    "copyright": "Copyright © 2025",
+    "asar": false,
+    "files": [
+      "dist/**/*",
+      "assets/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      { "from": "whisper_server.py", "to": "." },
+      { "from": "whisper_fast.py",   "to": "." }
+    ],
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "icon": "assets/icons/app.ico",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Blitztext",
+      "menuCategory": "Blitztext",
+      "runAfterFinish": true,
+      "installerIcon": "assets/icons/app.ico",
+      "uninstallerIcon": "assets/icons/app.ico",
+      "installerHeaderIcon": "assets/icons/app.ico",
+      "deleteAppDataOnUninstall": false
+    },
+    "directories": {
+      "output": "installer"
+    }
+  }
+}

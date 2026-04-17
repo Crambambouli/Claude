@@ -1,0 +1,10 @@
+node_modules/
+dist/
+release/
+installer/
+*.log
+*.map
+.DS_Store
+assets/icons/*.png
+assets/icons/*.ico
+config.json
