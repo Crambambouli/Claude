@@ -59,16 +59,28 @@ export class TtsManager {
     return text
       // Zeilenumbrüche normalisieren (Windows \r\n → \n)
       .replace(/\r\n/g, '\n')
+      // URLs komplett entfernen
+      .replace(/https?:\/\/\S+/g, '')
       // Markdown-Überschriften
       .replace(/^#{1,6}\s+/gm, '')
-      // Fett/Kursiv (**text** / *text*)
+      // Fett/Kursiv (**text** / *text* / _text_)
       .replace(/\*{1,2}(.+?)\*{1,2}/g, '$1')
+      .replace(/_{1,2}(.+?)_{1,2}/g, '$1')
       // Bullet-Zeilen: Symbol entfernen, Punkt dahinter → SAPI pausiert nach Punkten
       .replace(/^[\s]*[-•·▸▹►◆*+]\s+(.+)/gm, '$1. ')
-      // Übrige einzelne Bullet-Zeichen entfernen
+      // Übrige Bullet-Zeichen und Sternchen
       .replace(/[•·▸▹►◆*]/g, '')
-      // Schrägstrich zwischen Wörtern → Leerzeichen ("A / B" → "A B")
+      // Backticks (Code-Marker)
+      .replace(/`+/g, '')
+      // Windows-Pfade: Backslash → Leerzeichen, Laufwerksbuchstabe "C:" → "C"
+      .replace(/\b([A-Za-z]):\\/g, '$1 ')
+      .replace(/\\/g, ' ')
+      // Schrägstrich → Leerzeichen
       .replace(/\s*\/\s*/g, ' ')
+      // Klammern entfernen
+      .replace(/[[\]{}()]/g, '')
+      // Pipe, At, Tilde, Caret, Gleichheitszeichen
+      .replace(/[|@~^=<>]/g, ' ')
       // Doppelpunkt am Zeilenende → Punkt
       .replace(/:(\s*\n)/g, '.$1')
       // Mehrfache Leerzeilen → Pause
