@@ -74,10 +74,7 @@ object JigsawShapeGenerator {
     }
 
     /** Peak connector protrusion as fraction of edge length. */
-    const val TAB_PEAK_FRACTION = 0.30f
-
-    /** Shoulder-dip depth as fraction of edge length (affects BLANK outward bump). */
-    const val SHOULDER_FRACTION = 0.04f
+    const val TAB_PEAK_FRACTION = 0.34f
 
     private fun addEdge(
         path  : Path,
@@ -94,53 +91,43 @@ object JigsawShapeGenerator {
         val dx  = x1 - x0
         val dy  = y1 - y0
         val len = sqrt(dx * dx + dy * dy)
+        // BLANK = outward knob, TAB = inward socket
         val s   = if (edge == EdgeType.BLANK) 1f else -1f
 
-        // Point at fraction t along edge, displaced nf*len outward (s flips for BLANK)
         fun ex(t: Float) = x0 + dx * t
         fun ey(t: Float) = y0 + dy * t
         fun px(t: Float, nf: Float) = ex(t) + outNx * len * nf * s
         fun py(t: Float, nf: Float) = ey(t) + outNy * len * nf * s
 
-        // Flat section to left shoulder
-        path.lineTo(ex(0.35f), ey(0.35f))
+        // Flat to left shoulder
+        path.lineTo(ex(0.37f), ey(0.37f))
 
-        // Left shoulder dip (organic joint look), then rise to neck
+        // Rise to left neck base
         path.cubicTo(
-            px(0.36f, -0.02f), py(0.36f, -0.02f),
-            px(0.38f, -0.04f), py(0.38f, -0.04f),
-            px(0.40f,  0.00f), py(0.40f,  0.00f)
-        )
-        path.cubicTo(
-            px(0.41f,  0.06f), py(0.41f,  0.06f),
-            px(0.43f,  0.10f), py(0.43f,  0.10f),
-            px(0.45f,  0.10f), py(0.45f,  0.10f)
+            px(0.37f, 0.00f), py(0.37f, 0.00f),
+            px(0.42f, 0.00f), py(0.42f, 0.00f),
+            px(0.44f, 0.10f), py(0.44f, 0.10f)
         )
 
-        // Round connector head — left arc to peak
+        // Left arc — CP1 at t=0.40 (left of neck) forces head to bulge wider than neck
         path.cubicTo(
-            px(0.45f,  0.22f), py(0.45f,  0.22f),
-            px(0.46f,  0.30f), py(0.46f,  0.30f),
-            px(0.50f,  0.30f), py(0.50f,  0.30f)
+            px(0.40f, 0.20f), py(0.40f, 0.20f),
+            px(0.44f, 0.34f), py(0.44f, 0.34f),
+            px(0.50f, 0.34f), py(0.50f, 0.34f)
         )
 
-        // Round connector head — right arc from peak
+        // Right arc — mirror of left
         path.cubicTo(
-            px(0.54f,  0.30f), py(0.54f,  0.30f),
-            px(0.55f,  0.22f), py(0.55f,  0.22f),
-            px(0.55f,  0.10f), py(0.55f,  0.10f)
+            px(0.56f, 0.34f), py(0.56f, 0.34f),
+            px(0.60f, 0.20f), py(0.60f, 0.20f),
+            px(0.56f, 0.10f), py(0.56f, 0.10f)
         )
 
-        // Descend neck, then right shoulder dip
+        // Descent from right neck to right shoulder
         path.cubicTo(
-            px(0.57f,  0.06f), py(0.57f,  0.06f),
-            px(0.59f,  0.00f), py(0.59f,  0.00f),
-            px(0.62f, -0.04f), py(0.62f, -0.04f)
-        )
-        path.cubicTo(
-            px(0.63f, -0.02f), py(0.63f, -0.02f),
-            px(0.65f,  0.00f), py(0.65f,  0.00f),
-            ex(0.65f),          ey(0.65f)
+            px(0.58f, 0.00f), py(0.58f, 0.00f),
+            px(0.63f, 0.00f), py(0.63f, 0.00f),
+            ex(0.63f),         ey(0.63f)
         )
 
         path.lineTo(x1, y1)

@@ -33,25 +33,50 @@ data class JigsawState(
 
     /**
      * Move piece [id] to fractional position (x, y).
-     * Snaps into correct position when close enough; otherwise repositions within board area.
+     * Priority: 1) absolute grid snap, 2) relative snap to adjacent floating piece, 3) free placement.
      */
     fun movePiece(id: Int, x: Float, y: Float): JigsawState {
         val piece = pieces.first { it.id == id }
-        val (cx, cy) = correctCenter(piece)
-
+        val r = piece.definition.row
+        val c = piece.definition.col
         val cellW  = BOARD_FRACTION / cols.toFloat()
         val cellH  = 1f / rows.toFloat()
-        val factor = if (hasAnyPlacedNeighbor(piece)) 0.65f else 0.50f
-        val snapped = abs(x - cx) < cellW * factor && abs(y - cy) < cellH * factor
 
-        val newX = if (snapped) cx else x.coerceIn(0.01f, BOARD_FRACTION - 0.01f)
-        val newY = if (snapped) cy else y.coerceIn(0.01f, 0.99f)
+        // 1. Absolute snap to correct grid position
+        val (cx, cy) = correctCenter(piece)
+        val absFactor = if (hasAnyPlacedNeighbor(piece)) 0.65f else 0.50f
+        if (abs(x - cx) < cellW * absFactor && abs(y - cy) < cellH * absFactor) {
+            return copy(pieces = pieces.map {
+                if (it.id == id) it.copy(x = cx, y = cy, isPlaced = true) else it
+            })
+        }
 
-        return copy(
-            pieces = pieces.map {
-                if (it.id == id) it.copy(x = newX, y = newY, isPlaced = snapped) else it
+        // 2. Relative snap to an adjacent piece that is on the board (placed or floating)
+        val relTarget = pieces
+            .filter { n -> !n.isInTray && n.id != id &&
+                abs(n.definition.row - r) + abs(n.definition.col - c) == 1 }
+            .mapNotNull { n ->
+                val tx = n.x + (c - n.definition.col) * cellW
+                val ty = n.y + (r - n.definition.row) * cellH
+                if (abs(x - tx) < cellW * 0.55f && abs(y - ty) < cellH * 0.55f)
+                    Triple(n.isPlaced, tx, ty) else null
             }
-        )
+            .minByOrNull { t -> abs(x - t.second) + abs(y - t.third) }
+
+        if (relTarget != null) {
+            val tx = relTarget.second.coerceIn(0.01f, BOARD_FRACTION - 0.01f)
+            val ty = relTarget.third.coerceIn(0.01f, 0.99f)
+            return copy(pieces = pieces.map {
+                if (it.id == id) it.copy(x = tx, y = ty, isPlaced = relTarget.first) else it
+            })
+        }
+
+        // 3. Free placement within board area
+        val newX = x.coerceIn(0.01f, BOARD_FRACTION - 0.01f)
+        val newY = y.coerceIn(0.01f, 0.99f)
+        return copy(pieces = pieces.map {
+            if (it.id == id) it.copy(x = newX, y = newY, isPlaced = false) else it
+        })
     }
 
     private fun hasAnyPlacedNeighbor(piece: JigsawPiece): Boolean {

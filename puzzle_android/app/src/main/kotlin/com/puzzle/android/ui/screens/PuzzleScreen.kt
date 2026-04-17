@@ -154,10 +154,8 @@ fun PuzzleScreen(
                     val cellWPx   = boardW / state.cols
                     val cellHPx   = heightPx / state.rows
 
-                    val tabPadW   = cellHPx * JigsawShapeGenerator.TAB_PEAK_FRACTION  * 1.5f
-                    val tabPadH   = cellWPx * JigsawShapeGenerator.TAB_PEAK_FRACTION  * 1.5f
-                    val blankPadW = cellHPx * JigsawShapeGenerator.SHOULDER_FRACTION  * 1.5f
-                    val blankPadH = cellWPx * JigsawShapeGenerator.SHOULDER_FRACTION  * 1.5f
+                    val tabPadW = cellHPx * JigsawShapeGenerator.TAB_PEAK_FRACTION * 1.5f
+                    val tabPadH = cellWPx * JigsawShapeGenerator.TAB_PEAK_FRACTION * 1.5f
 
                     val paths = remember(state.rows, state.cols, cellWPx, cellHPx) {
                         definitions.associateBy(
@@ -231,8 +229,8 @@ fun PuzzleScreen(
                             )
 
                             if (path != null) {
-                                fun edgePadW(e: EdgeType) = when (e) { EdgeType.BLANK -> tabPadW; EdgeType.TAB -> blankPadW; else -> 0f }
-                                fun edgePadH(e: EdgeType) = when (e) { EdgeType.BLANK -> tabPadH; EdgeType.TAB -> blankPadH; else -> 0f }
+                                fun edgePadW(e: EdgeType) = if (e == EdgeType.BLANK) tabPadW else 0f
+                                fun edgePadH(e: EdgeType) = if (e == EdgeType.BLANK) tabPadH else 0f
                                 val padLeft  = edgePadW(def.left)
                                 val padTop   = edgePadH(def.top)
                                 val padRight = edgePadW(def.right)
