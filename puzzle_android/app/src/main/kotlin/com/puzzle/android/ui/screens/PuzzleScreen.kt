@@ -307,7 +307,8 @@ fun PuzzleScreen(
                     modifier = Modifier.height(44.dp)
                 ) { Text("Neu mischen") }
             }
-        } // else (state != null)
+        } // closes Column
+        } // closes else
     }
 }
 
