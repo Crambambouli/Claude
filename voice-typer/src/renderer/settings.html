@@ -110,6 +110,45 @@
     .btn-cancel { background: #313244; color: #cdd6f4; border: 1px solid #45475a; }
     .btn-log    { background: #313244; color: #6c7086; border: 1px solid #313244;
                   font-size: 11px; padding: 6px 12px; }
+
+    /* ─── TTS-Wörterliste ─────────────────────────────── */
+    .replacement-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+    .replacement-row input {
+      flex: 1;
+      padding: 5px 8px;
+      font-size: 12px;
+    }
+    .replacement-arrow { color: #6c7086; font-size: 12px; flex-shrink: 0; }
+    .remove-btn {
+      background: none;
+      border: 1px solid #45475a;
+      border-radius: 4px;
+      color: #585b70;
+      font-size: 13px;
+      line-height: 1;
+      padding: 2px 7px;
+      cursor: pointer;
+      transition: all .12s;
+      flex-shrink: 0;
+    }
+    .remove-btn:hover { border-color: #f38ba8; color: #f38ba8; }
+    .add-btn {
+      margin-top: 4px;
+      padding: 5px 12px;
+      background: #313244;
+      border: 1px solid #45475a;
+      border-radius: 5px;
+      color: #bac2de;
+      cursor: pointer;
+      font-size: 12px;
+      transition: background .15s;
+    }
+    .add-btn:hover { background: #45475a; }
   </style>
 </head>
 <body>
@@ -174,6 +213,14 @@
   </div>
 </div>
 
+<!-- TTS Aussprache -->
+<div class="section">
+  <div class="section-title">TTS Aussprache-Wörterliste</div>
+  <div id="replacementsList"></div>
+  <button class="add-btn" onclick="addReplacement()">+ Eintrag hinzufügen</button>
+  <div class="hint" style="margin-top:6px">Begriff (links) wird beim Vorlesen durch Aussprache (rechts) ersetzt.</div>
+</div>
+
 <!-- Aktionen -->
 <div class="actions">
   <button class="btn-log" onclick="openLog()">Log öffnen</button>
@@ -192,7 +239,46 @@
     document.getElementById('apiKey').value          = s.apiKey          ?? '';
     document.getElementById('hotkey').value          = s.hotkey          ?? 'Ctrl+F8';
     document.getElementById('audioDevice').value     = s.audioDevice     ?? '';
+    buildReplacementRows(s.ttsReplacements ?? {});
   });
+
+  // ─── TTS-Wörterliste ──────────────────────────────────────────────────────
+  function buildReplacementRows(map) {
+    const list = document.getElementById('replacementsList');
+    list.innerHTML = '';
+    for (const [from, to] of Object.entries(map)) {
+      appendRow(from, to);
+    }
+  }
+
+  function appendRow(from = '', to = '') {
+    const list = document.getElementById('replacementsList');
+    const row  = document.createElement('div');
+    row.className = 'replacement-row';
+    row.innerHTML =
+      `<input type="text" placeholder="Begriff" value="${esc(from)}">` +
+      `<span class="replacement-arrow">→</span>` +
+      `<input type="text" placeholder="Aussprache" value="${esc(to)}">` +
+      `<button class="remove-btn" onclick="this.parentElement.remove()">×</button>`;
+    list.appendChild(row);
+  }
+
+  function addReplacement() { appendRow(); }
+
+  function esc(s) {
+    return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+  }
+
+  function collectReplacements() {
+    const result = {};
+    document.querySelectorAll('#replacementsList .replacement-row').forEach(row => {
+      const inputs = row.querySelectorAll('input');
+      const from = inputs[0].value.trim();
+      const to   = inputs[1].value.trim();
+      if (from) result[from] = to;
+    });
+    return result;
+  }
 
   // Geräte laden
   api.getAudioDevices().then((devices) => {
@@ -217,12 +303,13 @@
   // ─── Speichern ─────────────────────────────────────────────────────────
   function save() {
     api.saveSettings({
-      whisperPath:     document.getElementById('whisperPath').value.trim(),
-      whisperModel:    document.getElementById('whisperModel').value,
-      whisperLanguage: document.getElementById('whisperLanguage').value,
-      apiKey:          document.getElementById('apiKey').value.trim(),
-      hotkey:          document.getElementById('hotkey').value.trim() || 'Ctrl+F8',
-      audioDevice:     document.getElementById('audioDevice').value,
+      whisperPath:      document.getElementById('whisperPath').value.trim(),
+      whisperModel:     document.getElementById('whisperModel').value,
+      whisperLanguage:  document.getElementById('whisperLanguage').value,
+      apiKey:           document.getElementById('apiKey').value.trim(),
+      hotkey:           document.getElementById('hotkey').value.trim() || 'Ctrl+F8',
+      audioDevice:      document.getElementById('audioDevice').value,
+      ttsReplacements:  collectReplacements(),
     });
     window.close();
   }

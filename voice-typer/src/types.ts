@@ -16,6 +16,8 @@ export interface Settings {
   hotkey: string;
   /** Geräte-ID des Mikrofons (leer = Standard) */
   audioDevice: string;
+  /** TTS-Aussprache-Ersetzungen: englischer Begriff → phonetisches Deutsch */
+  ttsReplacements: Record<string, string>;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -25,6 +27,17 @@ export const DEFAULT_SETTINGS: Settings = {
   apiKey:          '',
   hotkey:          'Ctrl+F8',
   audioDevice:     '',
+  ttsReplacements: {
+    Layer:    'Lejer',
+    Layers:   'Lejerz',
+    Memory:   'Memori',
+    Wiki:     'Wicki',
+    Session:  'Seschön',
+    Prompt:   'Prommt',
+    Prompts:  'Prommts',
+    Token:    'Touken',
+    Tokens:   'Toukens',
+  },
 };
 
 export interface AudioDevice {

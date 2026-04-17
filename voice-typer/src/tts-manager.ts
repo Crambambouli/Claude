@@ -5,9 +5,10 @@ import * as path from 'path';
 import { logger } from './logger';
 
 export class TtsManager {
-  private proc:    ChildProcess | null = null;
-  private vbsPath: string;
-  private txtPath: string;
+  private proc:         ChildProcess | null = null;
+  private vbsPath:      string;
+  private txtPath:      string;
+  private replacements: Record<string, string> = {};
 
   constructor() {
     this.vbsPath = path.join(os.tmpdir(), 'blitztext-tts.vbs');
@@ -25,11 +26,24 @@ export class TtsManager {
     fs.writeFileSync(this.vbsPath, vbs, 'utf8');
   }
 
+  setReplacements(r: Record<string, string>): void {
+    this.replacements = r;
+  }
+
+  private applyReplacements(text: string): string {
+    let result = text;
+    for (const [from, to] of Object.entries(this.replacements)) {
+      if (!from.trim()) continue;
+      result = result.replace(new RegExp(`\\b${from}\\b`, 'gi'), to);
+    }
+    return result;
+  }
+
   speak(text: string, onDone?: () => void): void {
     this.stop();
     if (!text.trim()) return;
 
-    const cleaned = TtsManager.cleanForSpeech(text);
+    const cleaned = this.applyReplacements(TtsManager.cleanForSpeech(text));
     if (!cleaned) return;
 
     // Text als UTF-16 LE mit BOM schreiben – VBScript OpenTextFile(..., -1) liest Unicode

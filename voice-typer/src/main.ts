@@ -65,6 +65,7 @@ class VoiceTyper {
 
     this.clipboard = new ClipboardManager();
     this.tts       = new TtsManager();
+    this.tts.setReplacements(s.ttsReplacements ?? {});
 
     this.tray = new TrayManager();
     this.tray.init({
@@ -115,6 +116,9 @@ class VoiceTyper {
       if (partial.whisperLanguage !== undefined) this.whisper.setLanguage(next.whisperLanguage);
       if (partial.hotkey && partial.hotkey !== prev.hotkey) {
         this.hotkey.reregister(next.hotkey);
+      }
+      if (partial.ttsReplacements !== undefined) {
+        this.tts.setReplacements(next.ttsReplacements);
       }
       logger.info('Settings vom Settings-Fenster übernommen.');
     });
@@ -281,7 +285,7 @@ class SettingsWindow {
 
     SettingsWindow.win = new BrowserWindow({
       width:     560,
-      height:    560,
+      height:    680,
       resizable: false,
       title:     'Blitztext – Einstellungen',
       show:      false,
