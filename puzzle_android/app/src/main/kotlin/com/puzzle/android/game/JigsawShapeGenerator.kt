@@ -39,22 +39,22 @@ object JigsawShapeGenerator {
                     row = r, col = c,
                     top = when {
                         r == 0         -> EdgeType.FLAT
-                        hTab[r-1][c]   -> EdgeType.BLANK  // piece above has TAB going down → indent here
-                        else           -> EdgeType.TAB    // piece above has BLANK going down → tab going up
+                        hTab[r-1][c]   -> EdgeType.BLANK
+                        else           -> EdgeType.TAB
                     },
                     bottom = when {
                         r == rows - 1  -> EdgeType.FLAT
-                        hTab[r][c]     -> EdgeType.TAB    // our tab going down
+                        hTab[r][c]     -> EdgeType.TAB
                         else           -> EdgeType.BLANK
                     },
                     left = when {
                         c == 0         -> EdgeType.FLAT
-                        vTab[r][c-1]   -> EdgeType.BLANK  // piece left has TAB going right → indent here
-                        else           -> EdgeType.TAB    // our tab going left
+                        vTab[r][c-1]   -> EdgeType.BLANK
+                        else           -> EdgeType.TAB
                     },
                     right = when {
                         c == cols - 1  -> EdgeType.FLAT
-                        vTab[r][c]     -> EdgeType.TAB    // our tab going right
+                        vTab[r][c]     -> EdgeType.TAB
                         else           -> EdgeType.BLANK
                     }
                 )
@@ -65,23 +65,38 @@ object JigsawShapeGenerator {
     fun createPiecePath(def: PieceDefinition, cellW: Float, cellH: Float): Path {
         val path = Path()
         path.moveTo(0f, 0f)
-        addEdge(path, 0f,    0f,    cellW, 0f,    def.top,    0f,  -1f)
-        addEdge(path, cellW, 0f,    cellW, cellH, def.right,  1f,   0f)
-        addEdge(path, cellW, cellH, 0f,   cellH,  def.bottom, 0f,   1f)
-        addEdge(path, 0f,    cellH, 0f,   0f,     def.left,  -1f,   0f)
+        // Each edge uses a jitter derived from its shared boundary identifier,
+        // so adjacent pieces always get the same jitter → complementary shapes fit.
+        addEdge(path, 0f,    0f,    cellW, 0f,    def.top,    0f,  -1f, edgeJitter(def.row - 1, def.col,     true))
+        addEdge(path, cellW, 0f,    cellW, cellH, def.right,  1f,   0f, edgeJitter(def.row,     def.col,     false))
+        addEdge(path, cellW, cellH, 0f,   cellH,  def.bottom, 0f,   1f, edgeJitter(def.row,     def.col,     true))
+        addEdge(path, 0f,    cellH, 0f,   0f,     def.left,  -1f,   0f, edgeJitter(def.row,     def.col - 1, false))
         path.close()
         return path
     }
 
-    /** Peak connector protrusion as fraction of edge length. */
-    const val TAB_PEAK_FRACTION = 0.36f
+    /**
+     * Upper bound of connector protrusion as fraction of edge length — used for canvas padding.
+     * Actual protrusion per edge varies with jitter in range [0.30, 0.42].
+     */
+    const val TAB_PEAK_FRACTION = 0.42f
+
+    /**
+     * Returns a stable value in [-1, 1] for the boundary between two adjacent cells.
+     * Both pieces sharing the boundary call this with the same arguments → same jitter.
+     */
+    private fun edgeJitter(row: Int, col: Int, isHorizontal: Boolean): Float {
+        val seed = if (isHorizontal) row * 10007L + col else row + col * 10007L
+        return Random(seed).nextFloat() * 2f - 1f
+    }
 
     private fun addEdge(
         path  : Path,
         x0    : Float, y0: Float,
         x1    : Float, y1: Float,
         edge  : EdgeType,
-        outNx : Float, outNy: Float
+        outNx : Float, outNy: Float,
+        jitter: Float = 0f
     ) {
         if (edge == EdgeType.FLAT) {
             path.lineTo(x1, y1)
@@ -99,35 +114,45 @@ object JigsawShapeGenerator {
         fun px(t: Float, nf: Float) = ex(t) + outNx * len * nf * s
         fun py(t: Float, nf: Float) = ey(t) + outNy * len * nf * s
 
-        // Flat to left shoulder
-        path.lineTo(ex(0.37f), ey(0.37f))
+        // Per-edge organic variation — symmetric around t=0.50 so complementary edges match
+        val shoulderT  = 0.34f + jitter * 0.03f   // shoulder: 31..37% along edge
+        val neckT      = 0.43f + jitter * 0.03f   // neck entry: 40..46%
+        val neckNf     = 0.12f + jitter * 0.03f   // neck depth: 9..15% of edge length
+        val peakNf     = 0.36f + jitter * 0.06f   // head protrusion: 30..42%
+        val cp1T       = neckT - 0.15f            // head CP1: always 15% left of neck
+        val headCP2T   = 0.40f + jitter * 0.03f   // head shape: 37..43% (oval ↔ round)
+        val rNeckT     = 1.0f - neckT
+        val rShoulderT = 1.0f - shoulderT
 
-        // Rise to left neck base
+        // Flat section to left shoulder
+        path.lineTo(ex(shoulderT), ey(shoulderT))
+
+        // Smooth rise to left neck
         path.cubicTo(
-            px(0.38f, 0.00f), py(0.38f, 0.00f),
-            px(0.43f, 0.05f), py(0.43f, 0.05f),
-            px(0.43f, 0.12f), py(0.43f, 0.12f)
+            px(shoulderT + 0.01f, 0.00f),      py(shoulderT + 0.01f, 0.00f),
+            px(neckT,             neckNf * 0.45f), py(neckT,          neckNf * 0.45f),
+            px(neckT,             neckNf),      py(neckT,             neckNf)
         )
 
-        // Left arc — CP1 at t=0.28 forces head ≈2× wider than neck (mushroom shape)
+        // Left arc — CP1 far left (cp1T ≈ 0.28) so head is ≈2× wider than neck
         path.cubicTo(
-            px(0.28f, 0.22f), py(0.28f, 0.22f),
-            px(0.40f, 0.36f), py(0.40f, 0.36f),
-            px(0.50f, 0.36f), py(0.50f, 0.36f)
+            px(cp1T,      peakNf * 0.62f), py(cp1T,      peakNf * 0.62f),
+            px(headCP2T,  peakNf),         py(headCP2T,  peakNf),
+            px(0.50f,     peakNf),         py(0.50f,     peakNf)
         )
 
-        // Right arc — mirror of left
+        // Right arc — exact mirror of left arc
         path.cubicTo(
-            px(0.60f, 0.36f), py(0.60f, 0.36f),
-            px(0.72f, 0.22f), py(0.72f, 0.22f),
-            px(0.57f, 0.12f), py(0.57f, 0.12f)
+            px(1f - headCP2T, peakNf),         py(1f - headCP2T, peakNf),
+            px(1f - cp1T,     peakNf * 0.62f), py(1f - cp1T,     peakNf * 0.62f),
+            px(rNeckT,        neckNf),          py(rNeckT,        neckNf)
         )
 
         // Descent from right neck to right shoulder
         path.cubicTo(
-            px(0.57f, 0.05f), py(0.57f, 0.05f),
-            px(0.62f, 0.00f), py(0.62f, 0.00f),
-            ex(0.63f),         ey(0.63f)
+            px(rNeckT,             neckNf * 0.45f), py(rNeckT,             neckNf * 0.45f),
+            px(rShoulderT - 0.01f, 0.00f),          py(rShoulderT - 0.01f, 0.00f),
+            ex(rShoulderT), ey(rShoulderT)
         )
 
         path.lineTo(x1, y1)
