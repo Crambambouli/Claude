@@ -63,18 +63,20 @@ export class TtsManager {
       .replace(/^#{1,6}\s+/gm, '')
       // Fett/Kursiv (**text** / *text*)
       .replace(/\*{1,2}(.+?)\*{1,2}/g, '$1')
-      // Bullet-Zeichen (•, ▸, ►, ·) und alle verbleibenden Sternchen
+      // Bullet-Zeilen: Symbol entfernen, Punkt dahinter → SAPI pausiert nach Punkten
+      .replace(/^[\s]*[-•·▸▹►◆*+]\s+(.+)/gm, '$1. ')
+      // Übrige einzelne Bullet-Zeichen entfernen
       .replace(/[•·▸▹►◆*]/g, '')
-      // Markdown-Listenzeichen am Zeilenanfang (- / +)
-      .replace(/^\s*[-+]\s+/gm, '')
       // Schrägstrich zwischen Wörtern → Leerzeichen ("A / B" → "A B")
       .replace(/\s*\/\s*/g, ' ')
-      // Doppelpunkt am Zeilenende → Punkt (SAPI macht keine Pause sonst)
+      // Doppelpunkt am Zeilenende → Punkt
       .replace(/:(\s*\n)/g, '.$1')
-      // Mehrfache Leerzeilen → kurze Pause als Punkt
+      // Mehrfache Leerzeilen → Pause
       .replace(/\n{2,}/g, '. ')
       // Einzelne Zeilenumbrüche → Leerzeichen
       .replace(/\n/g, ' ')
+      // Doppelte Punkte bereinigen
+      .replace(/\.\s*\./g, '.')
       // Mehrfache Leerzeichen bereinigen
       .replace(/\s{2,}/g, ' ')
       .trim();
