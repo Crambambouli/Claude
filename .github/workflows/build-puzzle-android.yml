@@ -28,10 +28,9 @@ jobs:
           gradle-version: '8.7'
 
       - name: Build debug APK
-        working-directory: puzzle_android
         run: |
-          chmod +x gradlew
-          ./gradlew assembleDebug --no-daemon --stacktrace
+          cd puzzle_android
+          gradle assembleDebug --no-daemon --stacktrace --no-configuration-cache
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
