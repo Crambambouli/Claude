@@ -18,9 +18,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Umgebung
 
-- **Entwicklung / Build-Server:** Linux (`/home/user/Claude/voice-typer/`)
-- **Laufzeitumgebung:** Windows (die App läuft nur auf Windows)
-- **Wichtig:** Logs (`%APPDATA%\Blitztext\voice-typer.log`) und Config (`%APPDATA%\Blitztext\config.json`) liegen auf dem Windows-Rechner des Nutzers — diese Dateien sind vom Linux-Server **nicht erreichbar**. Nicht danach fragen, stattdessen den Code selbst analysieren.
+- **Nutzer arbeitet auf Windows 11** — dort liegt das Git-Repo, dort wird installiert, gebaut, gestartet und getestet.
+- **Claude läuft in einer Linux-Sandbox** (`/home/user/Claude/…`) die **nur** Code lesen/schreiben und committen/pushen kann. Sie ist **nicht** dein Windows-PC.
+- **Was hier funktioniert:** Code-Änderungen, `npm install`, `npm run build` (TypeScript-Kompilierung), `git` / GitHub-Operationen.
+- **Was hier nicht funktioniert:** `npm run package` (electron-builder braucht Wine für den Windows-Installer), `npm start` (keine GUI), Zugriff auf Logs/Config.
+- **Runtime-Artefakte sind nicht erreichbar:** `%APPDATA%\Blitztext\voice-typer.log`, `%APPDATA%\Blitztext\config.json` liegen ausschließlich auf dem Windows-Rechner. Nicht danach fragen, stattdessen den Code selbst analysieren.
+- **Arbeits-Flow:** Claude ändert Code → pusht Branch → Nutzer zieht auf Windows 11 → `npm install` + `npm run dev` (oder `npm run package`).
 
 ---
 
