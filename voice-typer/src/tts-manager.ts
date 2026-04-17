@@ -29,13 +29,39 @@ export class TtsManager {
     this.stop();
     if (!text.trim()) return;
 
+    const cleaned = TtsManager.cleanForSpeech(text);
+    if (!cleaned) return;
+
     // Text als UTF-16 LE mit BOM schreiben – VBScript OpenTextFile(..., -1) liest Unicode
-    fs.writeFileSync(this.txtPath, '\ufeff' + text, 'utf16le');
+    fs.writeFileSync(this.txtPath, '\ufeff' + cleaned, 'utf16le');
 
     this.proc = spawn('wscript.exe', [this.vbsPath], { windowsHide: true });
     this.proc.on('exit', () => { this.proc = null; onDone?.(); });
 
-    logger.info(`TTS gestartet: "${text.slice(0, 60)}"`);
+    logger.info(`TTS gestartet: "${cleaned.slice(0, 60)}"`);
+  }
+
+  static cleanForSpeech(text: string): string {
+    return text
+      // Markdown-Überschriften
+      .replace(/^#{1,6}\s+/gm, '')
+      // Fett/Kursiv (**text** / *text*)
+      .replace(/\*{1,2}(.+?)\*{1,2}/g, '$1')
+      // Bullet-Zeichen (•, ▸, ►, ·)
+      .replace(/[•·▸▹►◆]/g, '')
+      // Markdown-Listenzeichen am Zeilenanfang (- / * / +)
+      .replace(/^\s*[-*+]\s+/gm, '')
+      // Schrägstrich zwischen Wörtern → Leerzeichen ("A / B" → "A B")
+      .replace(/\s*\/\s*/g, ' ')
+      // Doppelpunkt am Zeilenende → Punkt (SAPI macht keine Pause sonst)
+      .replace(/:(\s*\n)/g, '.$1')
+      // Mehrfache Leerzeilen → kurze Pause als Punkt
+      .replace(/\n{2,}/g, '. ')
+      // Einzelne Zeilenumbrüche → Leerzeichen
+      .replace(/\n/g, ' ')
+      // Mehrfache Leerzeichen bereinigen
+      .replace(/\s{2,}/g, ' ')
+      .trim();
   }
 
   stop(): void {
