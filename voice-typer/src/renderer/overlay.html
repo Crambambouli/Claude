@@ -44,7 +44,7 @@
   .title-bar .exit-btn { font-size: 9px; letter-spacing: 0.04em; }
   .title-bar .exit-btn:hover  { color: #f38ba8; }
 
-  /* ─── Record-Button ───────────────────────────────── */
+  /* ─── Record- & Speak-Bereich ────────────────────── */
   .record-area {
     display: flex;
     flex-direction: column;
@@ -52,7 +52,14 @@
     padding: 14px 0 10px;
   }
 
-  .record-btn {
+  .btn-row {
+    display: flex;
+    gap: 20px;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .record-btn, .speak-btn {
     -webkit-app-region: no-drag;
     width: 72px; height: 72px;
     border-radius: 50%;
@@ -64,17 +71,21 @@
     justify-content: center;
     font-size: 28px;
     transition: transform .12s, border-color .2s, background .2s;
-    position: relative;
   }
-  .record-btn:hover  { transform: scale(1.06); }
-  .record-btn:active { transform: scale(0.96); }
+  .record-btn:hover, .speak-btn:hover  { transform: scale(1.06); }
+  .record-btn:active, .speak-btn:active { transform: scale(0.96); }
 
-  /* Zustände */
+  /* Record-Zustände */
   .record-btn.idle       { border-color: #45475a; }
   .record-btn.recording  { border-color: #f38ba8; background: #3a1e1e;
                            animation: pulse-red 1s ease-in-out infinite; }
   .record-btn.processing { border-color: #f9e2af; background: #2e2a1e;
                            animation: pulse-yellow .8s ease-in-out infinite; }
+
+  /* Speak-Zustände */
+  .speak-btn.idle     { border-color: #45475a; }
+  .speak-btn.speaking { border-color: #89b4fa; background: #1e2e4a;
+                        animation: pulse-blue 1s ease-in-out infinite; }
 
   @keyframes pulse-red {
     0%, 100% { box-shadow: 0 0 0 0 rgba(243,139,168,.4); }
@@ -83,6 +94,10 @@
   @keyframes pulse-yellow {
     0%, 100% { box-shadow: 0 0 0 0 rgba(249,226,175,.4); }
     50%       { box-shadow: 0 0 0 10px rgba(249,226,175,0); }
+  }
+  @keyframes pulse-blue {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(137,180,250,.4); }
+    50%       { box-shadow: 0 0 0 10px rgba(137,180,250,0); }
   }
 
   .status-label {
@@ -181,11 +196,16 @@
   </div>
 </div>
 
-<!-- Aufnahme-Button -->
+<!-- Aufnahme- & Vorlese-Button -->
 <div class="record-area">
-  <button class="record-btn idle" id="recordBtn" onclick="toggleRecording()" title="Klicken oder Ctrl+F8">
-    <span id="recordIcon">🎤</span>
-  </button>
+  <div class="btn-row">
+    <button class="record-btn idle" id="recordBtn" onclick="toggleRecording()" title="Klicken oder Ctrl+F8">
+      <span id="recordIcon">🎤</span>
+    </button>
+    <button class="speak-btn idle" id="speakBtn" onclick="toggleSpeak()" title="Zwischenablage vorlesen">
+      <span id="speakIcon">🔊</span>
+    </button>
+  </div>
   <div class="status-label idle" id="statusLabel">BEREIT</div>
   <div class="hotkey-hint" id="hintLabel">Klicken oder Ctrl+F8 drücken</div>
 </div>
@@ -216,6 +236,8 @@ const statusLabel = document.getElementById('statusLabel');
 const hintLabel   = document.getElementById('hintLabel');
 const lastTextEl  = document.getElementById('lastText');
 const copyBtn     = document.getElementById('copyBtn');
+const speakBtn    = document.getElementById('speakBtn');
+const speakIcon   = document.getElementById('speakIcon');
 
 let currentLastText = '';
 
@@ -224,6 +246,12 @@ const STATE_CONFIG = {
   recording:  { label: 'AUFNAHME …',    icon: '⏹',  hint: 'Erneut klicken zum Stoppen' },
   processing: { label: 'VERARBEITUNG …',icon: '⏳', hint: 'Bitte warten …' },
 };
+
+// ─── Speak-State-Updates ────────────────────────────────────────────────────
+ipcRenderer.on('update-speak-state', (_e, speaking) => {
+  speakBtn.className = `speak-btn ${speaking ? 'speaking' : 'idle'}`;
+  speakIcon.textContent = speaking ? '⏹' : '🔊';
+});
 
 // ─── State-Updates vom Main-Prozess ────────────────────────────────────────
 ipcRenderer.on('update-state', (_e, { state, mode, lastText }) => {
@@ -290,6 +318,10 @@ function exitApp() {
 
 function openSettings() {
   ipcRenderer.send('overlay-open-settings');
+}
+
+function toggleSpeak() {
+  ipcRenderer.send('overlay-toggle-speak');
 }
 </script>
 </body>

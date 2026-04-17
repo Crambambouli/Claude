@@ -9,6 +9,7 @@ interface OverlayCallbacks {
   onToggleRecording:  () => void;
   onExit:             () => void;
   onSettings:         () => void;
+  onToggleSpeak:      () => void;
 }
 
 export class OverlayManager {
@@ -54,6 +55,11 @@ export class OverlayManager {
     this.win.webContents.send('update-state', { state, mode, lastText });
   }
 
+  updateSpeakState(speaking: boolean): void {
+    if (!this.win || this.win.isDestroyed()) return;
+    this.win.webContents.send('update-speak-state', speaking);
+  }
+
   toggle(): void {
     if (!this.win || this.win.isDestroyed()) { this.createWindow(); return; }
     if (this.win.isVisible()) this.win.hide();
@@ -86,6 +92,7 @@ export class OverlayManager {
     ipcMain.on('overlay-minimize',      () => this.win?.minimize());
     ipcMain.on('overlay-exit',          () => this.callbacks.onExit());
     ipcMain.on('overlay-open-settings', () => this.callbacks.onSettings());
+    ipcMain.on('overlay-toggle-speak',  () => this.callbacks.onToggleSpeak());
   }
 
   private findFile(filename: string): string {

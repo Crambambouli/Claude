@@ -1,5 +1,5 @@
 import {
-  app, BrowserWindow, ipcMain, shell, Notification,
+  app, BrowserWindow, clipboard, ipcMain, shell, Notification,
 } from 'electron';
 import * as path from 'path';
 import * as fs   from 'fs';
@@ -11,6 +11,7 @@ import { AudioRecorder }     from './audio-recorder';
 import { WhisperService, stripHallucinations } from './whisper';
 import { ModeProcessor }     from './modes';
 import { ClipboardManager }  from './clipboard-manager';
+import { TtsManager }        from './tts-manager';
 import { SettingsManager }   from './settings';
 import { AppState, Mode, Settings } from './types';
 import { logger } from './logger';
@@ -32,6 +33,7 @@ class VoiceTyper {
   private whisper!:   WhisperService;
   private modes!:     ModeProcessor;
   private clipboard!: ClipboardManager;
+  private tts!:       TtsManager;
   private settings!:  SettingsManager;
 
   private state:       AppState = 'idle';
@@ -62,6 +64,7 @@ class VoiceTyper {
     this.recorder.init();
 
     this.clipboard = new ClipboardManager();
+    this.tts       = new TtsManager();
 
     this.tray = new TrayManager();
     this.tray.init({
@@ -79,6 +82,7 @@ class VoiceTyper {
       onToggleRecording: () => void this.handleHotkey(),
       onExit:            () => this.quit(),
       onSettings:        () => SettingsWindow.open(this.settings, this.recorder, this.whisper),
+      onToggleSpeak:     () => this.handleToggleSpeak(),
     });
 
     this.hotkey = new HotkeyManager(s.hotkey || 'Ctrl+F8');
@@ -230,11 +234,27 @@ class VoiceTyper {
     }
   }
 
+  private handleToggleSpeak(): void {
+    if (this.tts.isSpeaking()) {
+      this.tts.stop();
+      this.overlay.updateSpeakState(false);
+    } else {
+      const text = clipboard.readText();
+      if (!text.trim()) {
+        logger.info('TTS: Zwischenablage leer.');
+        return;
+      }
+      this.overlay.updateSpeakState(true);
+      this.tts.speak(text, () => this.overlay.updateSpeakState(false));
+    }
+  }
+
   private quit(): void {
     logger.info('App wird beendet.');
     this.hotkey?.unregister();
     this.recorder?.destroy();
     this.whisper?.destroy();
+    this.tts?.destroy();
     this.overlay?.destroy();
     this.tray?.destroy();
     app.quit();
