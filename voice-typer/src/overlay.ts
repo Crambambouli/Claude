@@ -8,6 +8,7 @@ interface OverlayCallbacks {
   onModeChange:       (mode: Mode) => void;
   onToggleRecording:  () => void;
   onExit:             () => void;
+  onSettings:         () => void;
 }
 
 export class OverlayManager {
@@ -81,9 +82,10 @@ export class OverlayManager {
       this.callbacks.onToggleRecording();
     });
 
-    ipcMain.on('overlay-hide',     () => this.win?.hide());
-    ipcMain.on('overlay-minimize', () => this.win?.minimize());
-    ipcMain.on('overlay-exit',     () => this.callbacks.onExit());
+    ipcMain.on('overlay-hide',          () => this.win?.hide());
+    ipcMain.on('overlay-minimize',      () => this.win?.minimize());
+    ipcMain.on('overlay-exit',          () => this.callbacks.onExit());
+    ipcMain.on('overlay-open-settings', () => this.callbacks.onSettings());
   }
 
   private findFile(filename: string): string {

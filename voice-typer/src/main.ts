@@ -78,6 +78,7 @@ class VoiceTyper {
       onModeChange:      (m) => this.onModeChange(m),
       onToggleRecording: () => void this.handleHotkey(),
       onExit:            () => this.quit(),
+      onSettings:        () => SettingsWindow.open(this.settings, this.recorder, this.whisper),
     });
 
     this.hotkey = new HotkeyManager(s.hotkey || 'Ctrl+F8');

@@ -175,6 +175,7 @@
   <span class="name">🎤 VOICE TYPER</span>
   <div class="controls">
     <button class="ctrl-btn" id="minBtn" title="Minimieren" onclick="minimizeOverlay()">─</button>
+    <button class="ctrl-btn" title="Einstellungen" onclick="openSettings()">⚙</button>
     <button class="ctrl-btn close-btn" title="Ausblenden" onclick="hideOverlay()">×</button>
     <button class="ctrl-btn exit-btn" title="Beenden" onclick="exitApp()">END</button>
   </div>
@@ -285,6 +286,10 @@ function hideOverlay() {
 
 function exitApp() {
   ipcRenderer.send('overlay-exit');
+}
+
+function openSettings() {
+  ipcRenderer.send('overlay-open-settings');
 }
 </script>
 </body>
