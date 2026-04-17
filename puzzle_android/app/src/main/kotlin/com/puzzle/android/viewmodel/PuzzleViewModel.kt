@@ -95,6 +95,10 @@ class PuzzleViewModel : ViewModel() {
         _jigsaw.value = _jigsaw.value?.movePiece(id, x, y)
     }
 
+    fun movePieceToBoard(id: Int) {
+        _jigsaw.value = _jigsaw.value?.movePieceToBoard(id)
+    }
+
     fun newGame() {
         val defs = _definitions.value
         val state = _jigsaw.value ?: return

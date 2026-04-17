@@ -9,7 +9,9 @@ data class JigsawPiece(
     val x         : Float,           // center x, fraction of play-area width  (0..1)
     val y         : Float,           // center y, fraction of play-area height (0..1)
     val isPlaced  : Boolean = false
-)
+) {
+    val isInTray: Boolean get() = !isPlaced && x >= JigsawState.BOARD_FRACTION
+}
 
 data class JigsawState(
     val rows  : Int,
@@ -31,7 +33,7 @@ data class JigsawState(
 
     /**
      * Move piece [id] to fractional position (x, y).
-     * Snaps into correct position when close enough; otherwise just repositions.
+     * Snaps into correct position when close enough; otherwise repositions within board area.
      */
     fun movePiece(id: Int, x: Float, y: Float): JigsawState {
         val piece = pieces.first { it.id == id }
@@ -41,12 +43,25 @@ data class JigsawState(
         val snapH = (1f / rows.toFloat()) * 0.40f
         val snapped = abs(x - cx) < snapW && abs(y - cy) < snapH
 
-        val newX = if (snapped) cx else x.coerceIn(0.01f, 0.99f)
+        val newX = if (snapped) cx else x.coerceIn(0.01f, BOARD_FRACTION - 0.01f)
         val newY = if (snapped) cy else y.coerceIn(0.01f, 0.99f)
 
         return copy(
             pieces = pieces.map {
                 if (it.id == id) it.copy(x = newX, y = newY, isPlaced = snapped) else it
+            }
+        )
+    }
+
+    /** Moves a tray piece onto the board at a random position. */
+    fun movePieceToBoard(id: Int, rng: Random = Random.Default): JigsawState {
+        val piece = pieces.first { it.id == id }
+        if (piece.isPlaced) return this
+        val x = BOARD_FRACTION * (0.2f + rng.nextFloat() * 0.6f)
+        val y = 0.1f + rng.nextFloat() * 0.8f
+        return copy(
+            pieces = pieces.map {
+                if (it.id == id) it.copy(x = x, y = y) else it
             }
         )
     }
