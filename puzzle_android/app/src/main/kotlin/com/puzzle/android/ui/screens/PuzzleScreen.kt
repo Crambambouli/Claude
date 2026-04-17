@@ -76,6 +76,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import com.puzzle.android.game.EdgeType
@@ -123,7 +125,8 @@ fun PuzzleScreen(
         }
     ) { padding ->
         val state = jigsaw
-        var isMinimized by remember { mutableStateOf(false) }
+        var isMinimized     by remember { mutableStateOf(false) }
+        var showPreviewFull by remember { mutableStateOf(false) }
 
         if (state == null || definitions.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
@@ -365,6 +368,7 @@ fun PuzzleScreen(
                                         .clip(RoundedCornerShape(4.dp))
                                         .border(1.dp, Color(0x44000000), RoundedCornerShape(4.dp))
                                         .background(Color.White)
+                                        .clickable { showPreviewFull = true }
                                 ) {
                                     Canvas(modifier = Modifier.fillMaxSize()) {
                                         drawImage(
@@ -452,10 +456,49 @@ fun PuzzleScreen(
 
                     Spacer(Modifier.weight(1f))
 
+                    OutlinedButton(
+                        onClick  = vm::saveGame,
+                        modifier = Modifier.height(40.dp)
+                    ) { Text("Speichern") }
+
+                    Spacer(Modifier.size(8.dp))
+
                     Button(
                         onClick  = vm::newGame,
                         modifier = Modifier.height(40.dp)
                     ) { Text("Neu mischen") }
+                }
+            }
+        }
+
+        if (showPreviewFull) {
+            val bmpD = bitmap
+            Dialog(
+                onDismissRequest = { showPreviewFull = false },
+                properties       = DialogProperties(usePlatformDefaultWidth = false)
+            ) {
+                Box(
+                    modifier         = Modifier
+                        .fillMaxSize()
+                        .background(Color.Black.copy(alpha = 0.88f))
+                        .clickable { showPreviewFull = false },
+                    contentAlignment = Alignment.Center
+                ) {
+                    if (bmpD != null) {
+                        Canvas(Modifier.fillMaxSize().padding(24.dp)) {
+                            val imgRatio    = bmpD.width.toFloat() / bmpD.height.toFloat()
+                            val canvasRatio = size.width / size.height
+                            val drawW = if (imgRatio > canvasRatio) size.width  else size.height * imgRatio
+                            val drawH = if (imgRatio > canvasRatio) size.width / imgRatio else size.height
+                            val ox    = (size.width  - drawW) / 2f
+                            val oy    = (size.height - drawH) / 2f
+                            drawImage(
+                                bmpD,
+                                dstOffset = IntOffset(ox.toInt(), oy.toInt()),
+                                dstSize   = IntSize(drawW.toInt(), drawH.toInt())
+                            )
+                        }
+                    }
                 }
             }
         }

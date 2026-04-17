@@ -48,11 +48,12 @@ fun SetupScreen(
     navController: NavController,
     vm: PuzzleViewModel = viewModel()
 ) {
-    val category   by vm.category.collectAsState()
-    val style      by vm.style.collectAsState()
-    val pieceCount by vm.pieceCount.collectAsState()
-    val isLoading  by vm.isLoading.collectAsState()
-    val error      by vm.error.collectAsState()
+    val category      by vm.category.collectAsState()
+    val style         by vm.style.collectAsState()
+    val pieceCount    by vm.pieceCount.collectAsState()
+    val isLoading     by vm.isLoading.collectAsState()
+    val error         by vm.error.collectAsState()
+    val hasSavedGame  by vm.hasSavedGame.collectAsState()
 
     LaunchedEffect(Unit) {
         vm.goToPuzzle.collect { navController.navigate("puzzle") }
@@ -134,6 +135,19 @@ fun SetupScreen(
                         style      = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
+                }
+
+                if (hasSavedGame) {
+                    OutlinedButton(
+                        onClick  = vm::loadSavedGame,
+                        enabled  = !isLoading,
+                        modifier = Modifier.fillMaxWidth().height(48.dp)
+                    ) {
+                        Text(
+                            text  = "Gespeichertes Spiel laden",
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                    }
                 }
             }
 

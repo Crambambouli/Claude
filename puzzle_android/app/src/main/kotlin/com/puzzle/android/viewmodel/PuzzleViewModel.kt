@@ -1,6 +1,7 @@
 package com.puzzle.android.viewmodel
 
 import android.app.Application
+import android.graphics.Bitmap
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.lifecycle.AndroidViewModel
@@ -9,6 +10,7 @@ import com.puzzle.android.data.image.ImageGenerator
 import com.puzzle.android.data.image.TestImageGenerator
 import com.puzzle.android.data.model.PuzzleCategory
 import com.puzzle.android.data.model.PuzzleStyle
+import com.puzzle.android.data.storage.GameStorage
 import com.puzzle.android.game.JigsawShapeGenerator
 import com.puzzle.android.game.JigsawState
 import com.puzzle.android.game.PieceDefinition
@@ -30,7 +32,6 @@ class PuzzleViewModel(application: Application) : AndroidViewModel(application) 
     private val _style     = MutableStateFlow(PuzzleStyle.BUNT)
     val style: StateFlow<PuzzleStyle> = _style.asStateFlow()
 
-    // Total piece count (maps to rows × cols in the ViewModel)
     private val _pieceCount = MutableStateFlow(50)
     val pieceCount: StateFlow<Int> = _pieceCount.asStateFlow()
 
@@ -51,6 +52,16 @@ class PuzzleViewModel(application: Application) : AndroidViewModel(application) 
     private val _jigsaw      = MutableStateFlow<JigsawState?>(null)
     val jigsaw: StateFlow<JigsawState?> = _jigsaw.asStateFlow()
 
+    private var rawBitmap: Bitmap? = null
+
+    // ── Persistence ──────────────────────────────────────────────────────────
+    private val _hasSavedGame = MutableStateFlow(false)
+    val hasSavedGame: StateFlow<Boolean> = _hasSavedGame.asStateFlow()
+
+    init {
+        _hasSavedGame.value = GameStorage.hasSave(getApplication())
+    }
+
     // ── Navigation ───────────────────────────────────────────────────────────
     private val _goToPuzzle = MutableSharedFlow<Unit>(extraBufferCapacity = 1)
     val goToPuzzle = _goToPuzzle.asSharedFlow()
@@ -67,7 +78,6 @@ class PuzzleViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 val (rows, cols) = pieceCountToGrid(_pieceCount.value)
 
-                // Image loading chain: assets → Pollinations.ai → TestImageGenerator
                 val bmp = withContext(Dispatchers.IO) {
                     ImageGenerator.loadFromAssets(getApplication<Application>().assets)
                 } ?: withContext(Dispatchers.IO) {
@@ -79,6 +89,7 @@ class PuzzleViewModel(application: Application) : AndroidViewModel(application) 
                     TestImageGenerator.create(cols, rows)
                 }
 
+                rawBitmap     = bmp
                 _bitmap.value = bmp.asImageBitmap()
 
                 val defs = JigsawShapeGenerator.generatePuzzle(rows, cols)
@@ -107,7 +118,7 @@ class PuzzleViewModel(application: Application) : AndroidViewModel(application) 
     }
 
     fun newGame() {
-        val defs = _definitions.value
+        val defs  = _definitions.value
         val state = _jigsaw.value ?: return
         _jigsaw.value = JigsawState.create(state.rows, state.cols, defs)
     }
@@ -116,6 +127,41 @@ class PuzzleViewModel(application: Application) : AndroidViewModel(application) 
         _jigsaw.value  = null
         _bitmap.value  = null
         _error.value   = null
+        rawBitmap      = null
+    }
+
+    fun saveGame() {
+        val state = _jigsaw.value ?: return
+        viewModelScope.launch(Dispatchers.IO) {
+            GameStorage.save(getApplication(), state, rawBitmap)
+            _hasSavedGame.value = true
+        }
+    }
+
+    fun loadSavedGame() {
+        viewModelScope.launch {
+            _isLoading.value = true
+            _error.value     = null
+            try {
+                val result = withContext(Dispatchers.IO) {
+                    GameStorage.load(getApplication<Application>())
+                }
+                if (result != null) {
+                    val (state, bmp) = result
+                    rawBitmap          = bmp
+                    _bitmap.value      = bmp?.asImageBitmap()
+                    _definitions.value = state.pieces.map { it.definition }
+                    _jigsaw.value      = state
+                    _goToPuzzle.tryEmit(Unit)
+                } else {
+                    _error.value = "Kein Spielstand gefunden"
+                }
+            } catch (e: Exception) {
+                _error.value = "Ladefehler: ${e.message}"
+            } finally {
+                _isLoading.value = false
+            }
+        }
     }
 
     // ── Helpers ──────────────────────────────────────────────────────────────
