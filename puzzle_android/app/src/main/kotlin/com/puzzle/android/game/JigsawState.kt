@@ -39,9 +39,10 @@ data class JigsawState(
         val piece = pieces.first { it.id == id }
         val (cx, cy) = correctCenter(piece)
 
-        val snapW = (BOARD_FRACTION / cols.toFloat()) * 0.40f
-        val snapH = (1f / rows.toFloat()) * 0.40f
-        val snapped = abs(x - cx) < snapW && abs(y - cy) < snapH
+        val cellW  = BOARD_FRACTION / cols.toFloat()
+        val cellH  = 1f / rows.toFloat()
+        val factor = if (hasAnyPlacedNeighbor(piece)) 0.65f else 0.50f
+        val snapped = abs(x - cx) < cellW * factor && abs(y - cy) < cellH * factor
 
         val newX = if (snapped) cx else x.coerceIn(0.01f, BOARD_FRACTION - 0.01f)
         val newY = if (snapped) cy else y.coerceIn(0.01f, 0.99f)
@@ -51,6 +52,19 @@ data class JigsawState(
                 if (it.id == id) it.copy(x = newX, y = newY, isPlaced = snapped) else it
             }
         )
+    }
+
+    private fun hasAnyPlacedNeighbor(piece: JigsawPiece): Boolean {
+        val r = piece.definition.row
+        val c = piece.definition.col
+        return pieces.any { n ->
+            n.isPlaced && (
+                (n.definition.row == r     && n.definition.col == c - 1) ||
+                (n.definition.row == r     && n.definition.col == c + 1) ||
+                (n.definition.row == r - 1 && n.definition.col == c    ) ||
+                (n.definition.row == r + 1 && n.definition.col == c    )
+            )
+        }
     }
 
     /** Moves a tray piece onto the board at a random position. */

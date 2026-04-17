@@ -57,6 +57,11 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.animation.core.AnimationSpec
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -212,10 +217,20 @@ fun PuzzleScreen(
                             val path       = paths[piece.id]
                             val isDragging = dragOffsets.containsKey(piece.id)
 
-                            if (path != null) {
-                                val screenCX = piece.x * widthPx + drag.x
-                                val screenCY = piece.y * heightPx + drag.y
+                            val (snapFX, snapFY) = state.correctCenter(piece)
+                            val animSpec: AnimationSpec<Float> =
+                                if (piece.isPlaced) spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)
+                                else snap()
+                            val screenCX by animateFloatAsState(
+                                targetValue   = if (piece.isPlaced) snapFX * widthPx  else piece.x * widthPx  + drag.x,
+                                animationSpec = animSpec, label = "cx"
+                            )
+                            val screenCY by animateFloatAsState(
+                                targetValue   = if (piece.isPlaced) snapFY * heightPx else piece.y * heightPx + drag.y,
+                                animationSpec = animSpec, label = "cy"
+                            )
 
+                            if (path != null) {
                                 val padLeft  = if (def.left   == EdgeType.TAB) tabPadW else 0f
                                 val padTop   = if (def.top    == EdgeType.TAB) tabPadH else 0f
                                 val padRight = if (def.right  == EdgeType.TAB) tabPadW else 0f
