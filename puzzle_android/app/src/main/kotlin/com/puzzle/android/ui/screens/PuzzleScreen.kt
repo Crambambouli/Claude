@@ -287,20 +287,38 @@ fun PuzzleScreen(
                                                             onDragStart = { topId = piece.id },
                                                             onDrag = { change, amount ->
                                                                 change.consume()
-                                                                // Divide by boardScale so drag matches visual position
                                                                 val scaled = amount / boardScale
-                                                                dragOffsets[piece.id] =
-                                                                    (dragOffsets[piece.id] ?: Offset.Zero) + scaled
+                                                                val newOff = (dragOffsets[piece.id] ?: Offset.Zero) + scaled
+                                                                dragOffsets[piece.id] = newOff
+                                                                // Sync all group members to same offset
+                                                                if (piece.groupId != null) {
+                                                                    state.pieces
+                                                                        .filter { it.groupId == piece.groupId && it.id != piece.id && !it.isPlaced }
+                                                                        .forEach { dragOffsets[it.id] = newOff }
+                                                                }
                                                             },
                                                             onDragEnd = {
                                                                 val off  = dragOffsets.remove(piece.id) ?: Offset.Zero
                                                                 val newX = (piece.x * widthPx  + off.x) / widthPx
                                                                 val newY = (piece.y * heightPx + off.y) / heightPx
                                                                 topId = -1
-                                                                vm.onPieceDropped(piece.id, newX, newY)
+                                                                if (piece.groupId != null) {
+                                                                    state.pieces
+                                                                        .filter { it.groupId == piece.groupId && it.id != piece.id }
+                                                                        .forEach { dragOffsets.remove(it.id) }
+                                                                    vm.onGroupDropped(piece.id, newX, newY)
+                                                                } else {
+                                                                    vm.onPieceDropped(piece.id, newX, newY)
+                                                                }
                                                             },
                                                             onDragCancel = {
-                                                                dragOffsets.remove(piece.id)
+                                                                if (piece.groupId != null) {
+                                                                    state.pieces
+                                                                        .filter { it.groupId == piece.groupId }
+                                                                        .forEach { dragOffsets.remove(it.id) }
+                                                                } else {
+                                                                    dragOffsets.remove(piece.id)
+                                                                }
                                                                 topId = -1
                                                             }
                                                         )

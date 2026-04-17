@@ -98,6 +98,10 @@ class PuzzleViewModel(application: Application) : AndroidViewModel(application) 
         _jigsaw.value = _jigsaw.value?.movePiece(id, x, y)
     }
 
+    fun onGroupDropped(leadId: Int, newLeadX: Float, newLeadY: Float) {
+        _jigsaw.value = _jigsaw.value?.movePieceWithGroup(leadId, newLeadX, newLeadY)
+    }
+
     fun movePieceToBoard(id: Int) {
         _jigsaw.value = _jigsaw.value?.movePieceToBoard(id)
     }
