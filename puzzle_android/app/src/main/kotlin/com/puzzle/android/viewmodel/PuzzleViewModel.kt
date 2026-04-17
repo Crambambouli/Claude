@@ -1,8 +1,9 @@
 package com.puzzle.android.viewmodel
 
+import android.app.Application
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.puzzle.android.data.image.ImageGenerator
 import com.puzzle.android.data.image.TestImageGenerator
@@ -20,7 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-class PuzzleViewModel : ViewModel() {
+class PuzzleViewModel(application: Application) : AndroidViewModel(application) {
 
     // ── Setup ────────────────────────────────────────────────────────────────
     private val _category  = MutableStateFlow(PuzzleCategory.BLUMEN)
@@ -66,8 +67,10 @@ class PuzzleViewModel : ViewModel() {
             try {
                 val (rows, cols) = pieceCountToGrid(_pieceCount.value)
 
-                // Try downloading an AI image; fall back to test bitmap
+                // Image loading chain: assets → Pollinations.ai → TestImageGenerator
                 val bmp = withContext(Dispatchers.IO) {
+                    ImageGenerator.loadFromAssets(getApplication<Application>().assets)
+                } ?: withContext(Dispatchers.IO) {
                     try {
                         val url = ImageGenerator.buildUrl(_category.value, _style.value)
                         ImageGenerator.download(url)

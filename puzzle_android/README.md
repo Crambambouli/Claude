@@ -1,95 +1,92 @@
 # Puzzle Android
 
-Android app scaffold (Kotlin + Jetpack Compose) — App-ID `puzzle_android`, version **0.1.0**.
+Jigsaw-Puzzle-App für Android (Kotlin + Jetpack Compose) — App-ID `puzzle_android`, Version **0.1.0**.
 
-Targets **Android 12+ (API 31+)** and is built with **Gradle 8.7**.
+Zielgerät: **Samsung SM-T500** (Android 12+, API 31+), gebaut mit **Gradle 8.7**.
 
 ---
 
 ## Features
 
-| Feature | Implementation |
+| Feature | Implementierung |
 |---|---|
-| Start screen `/` | Jetpack Compose + Material Design 3 |
-| Health check | `GET /api/health` via Retrofit |
-| Local storage | Room Database – `Example` entity |
-| State management | MVVM + `StateFlow` |
-| Dark mode | Dynamic colour (API 31+) + static M3 palette fallback |
-| Logging | `HttpLoggingInterceptor` (DEBUG only) |
-| Tests | JUnit 4 · Mockito-Kotlin · Compose UI tests |
+| Setup-Screen | Kategorie, Stil, Teileanzahl wählen |
+| Puzzle-Screen | Jigsaw-Teile per Drag & Drop platzieren |
+| Jigsaw-Formen | Kubische Bezier-Kurven (TAB / BLANK / FLAT) |
+| Ablage (Tray) | Scrollbare `LazyVerticalGrid` rechts (25% Breite) |
+| Spielfeld (Board) | Canvas links (75% Breite), Snap-to-Grid |
+| Bilderzeugung | Assets → Pollinations.ai → TestImageGenerator (Fallback) |
+| State-Management | MVVM + `StateFlow`, `AndroidViewModel` |
+| Dark Mode | Dynamic Colour (API 31+) + statische M3-Palette |
 
 ---
 
-## Prerequisites
+## Voraussetzungen
 
-| Tool | Minimum version |
+| Werkzeug | Mindestversion |
 |---|---|
-| Android Studio | Hedgehog (2023.1.1) or newer |
+| Android Studio | Hedgehog (2023.1.1) oder neuer |
 | JDK | 17 |
 | Android SDK | API 34 (compile) / API 31 (min) |
-| Gradle | 8.7 (via wrapper — no local install needed) |
+| Gradle | 8.7 (via Wrapper — kein lokales Install nötig) |
 
 ---
 
 ## Setup
 
-### 1. Clone the repository
+### 1. Repository klonen
 
 ```bash
 git clone <repo-url>
 cd puzzle_android
 ```
 
-### 2. Configure the Android SDK path
-
-Copy the template and set your local SDK location:
+### 2. Android-SDK-Pfad konfigurieren
 
 ```bash
 cp local.properties.template local.properties
 ```
 
-Edit `local.properties`:
+`local.properties` bearbeiten:
 
 ```properties
-# macOS example
-sdk.dir=/Users/<yourname>/Library/Android/sdk
+# macOS
+sdk.dir=/Users/<name>/Library/Android/sdk
 
-# Linux example
-sdk.dir=/home/<yourname>/Android/Sdk
+# Linux
+sdk.dir=/home/<name>/Android/Sdk
 
-# Windows example
-sdk.dir=C\:\\Users\\<yourname>\\AppData\\Local\\Android\\Sdk
+# Windows
+sdk.dir=C\:\\Users\\<name>\\AppData\\Local\\Android\\Sdk
 ```
 
-> Android Studio sets this automatically when you open the project.
+> Android Studio setzt dies beim Öffnen automatisch.
 
-### 3. Configure the API base URL (optional)
+### 3. Eigenes Puzzle-Bild hinterlegen (optional)
 
-The default URL is `https://api.example.com/`.  
-To override it, add a build config field in `app/build.gradle.kts`:
+Eine Datei `puzzle_image.jpg` in folgendes Verzeichnis legen:
 
-```kotlin
-buildConfigField("String", "API_BASE_URL", "\"https://your-real-api.com/\"")
+```
+puzzle_android/app/src/main/assets/puzzle_image.jpg
 ```
 
-Or set it per variant / via CI environment.
+Wird diese Datei gefunden, nutzt die App sie als Puzzle-Bild.  
+Fehlt sie, wird automatisch ein Bild von Pollinations.ai heruntergeladen  
+(oder ein farbiges Testbild als letzter Fallback).
 
 ---
 
 ## Build
 
 ```bash
-# Debug APK
+# Debug-APK
 ./gradlew assembleDebug
 
-# Release APK (requires a keystore — see Signing below)
-./gradlew assembleRelease
-
-# Full build (compile + lint + test)
+# Vollständiger Build (Kompilieren + Lint + Tests)
 ./gradlew build
 ```
 
-The debug APK is output to:
+APK-Ausgabepfad:
 
 ```
 app/build/outputs/apk/debug/app-debug.apk
@@ -97,193 +94,125 @@ app/build/outputs/apk/debug/app-debug.apk
 
 ---
 
-## Run
+## Installation auf dem Tablet (Samsung SM-T500)
 
-### Auf einem Tablet / Gerät installieren (empfohlen)
+### Schritt 1 – Entwickleroptionen aktivieren
 
-#### Schritt 1 – Entwickleroptionen auf dem Tablet aktivieren
-
-1. Einstellungen → Über das Tablet → **Buildnummer** 7× antippen.
+1. Einstellungen → Über das Tablet → **Buildnummer** 7× tippen.
 2. Einstellungen → Entwickleroptionen → **USB-Debugging** einschalten.
 
-#### Schritt 2 – Tablet per USB verbinden
-
-Kabel einstecken → auf dem Tablet „**USB-Debugging zulassen**" bestätigen.
-
-#### Schritt 3a – Direkt aus Android Studio (einfachster Weg)
+### Schritt 2a – Via Android Studio (empfohlen)
 
 1. `puzzle_android/` in Android Studio öffnen.
-2. Das Tablet erscheint automatisch in der Geräteleiste.
-3. ▶ **Run** drücken → App wird gebaut und direkt installiert.
+2. Tablet per USB verbinden und „USB-Debugging zulassen" bestätigen.
+3. Tablet in der Toolbar auswählen → ▶ **Run**.
 
-> Android Studio lädt das Gradle-Wrapper-JAR beim ersten Öffnen automatisch herunter – kein manuelles Setup nötig.
-
-#### Schritt 3b – Über die Kommandozeile (ADB)
+### Schritt 2b – Via ADB (Kommandozeile)
 
 ```bash
-# Im puzzle_android/-Verzeichnis:
-cp local.properties.template local.properties
-# sdk.dir in local.properties auf deinen Android-SDK-Pfad setzen
-
 ./gradlew assembleDebug
-
-# Tablet per USB verbunden? Dann direkt installieren:
 adb install app/build/outputs/apk/debug/app-debug.apk
 ```
 
-APK-Pfad nach dem Build:
-```
-app/build/outputs/apk/debug/app-debug.apk
-```
+### Schritt 2c – APK manuell übertragen (kein USB nötig)
 
-#### Schritt 3c – APK-Datei manuell übertragen (kein USB-Kabel nötig)
+1. `./gradlew assembleDebug` ausführen.
+2. `app/build/outputs/apk/debug/app-debug.apk` per E-Mail oder Cloud-Dienst aufs Tablet übertragen.
+3. Auf dem Tablet: Einstellungen → **Installation aus unbekannten Quellen** für den Browser/Dateimanager erlauben → APK tippen → Installieren.
 
-```bash
-./gradlew assembleDebug
-```
+### Schritt 2d – APK aus GitHub Actions CI herunterladen
 
-Dann die Datei `app/build/outputs/apk/debug/app-debug.apk` per E-Mail, Google Drive oder ähnlichem aufs Tablet übertragen.  
-Auf dem Tablet: Einstellungen → **Installation aus unbekannten Quellen** für den verwendeten Dateimanager / Browser erlauben → APK tippen → installieren.
+Nach jedem Push baut die CI automatisch eine Debug-APK:
 
-### Auf einem Emulator
-
-```bash
-./gradlew installDebug
-```
-
-### Via Android Studio (Emulator)
-
-1. `puzzle_android/` in Android Studio öffnen.
-2. Emulator oder Gerät in der Toolbar auswählen.
-3. ▶ **Run** drücken.
+1. GitHub → Repository → **Actions** → letzten erfolgreichen Build öffnen.
+2. Unter **Artifacts** → `puzzle-android-debug-apk` herunterladen.
+3. ZIP entpacken → APK wie in Schritt 2c auf dem Tablet installieren.
 
 ---
 
-## Signing (Debug Keystore)
+## CI / GitHub Actions
 
-Gradle automatically uses the default debug keystore (`~/.android/debug.keystore`) for debug builds.  
-No additional configuration is needed for development.
+Workflow: `.github/workflows/build-puzzle-android.yml`
 
-For a release build, add signing config to `app/build.gradle.kts`:
+Wird ausgelöst bei Push auf `claude/android-jigsaw-puzzle-app-*`-Branches  
+und bei PRs, die `puzzle_android/**` berühren.
 
-```kotlin
-signingConfigs {
-    create("release") {
-        storeFile   = file(System.getenv("KEYSTORE_PATH") ?: "release.jks")
-        storePassword = System.getenv("KEYSTORE_PASSWORD")
-        keyAlias      = System.getenv("KEY_ALIAS")
-        keyPassword   = System.getenv("KEY_PASSWORD")
-    }
-}
-buildTypes {
-    release {
-        signingConfig = signingConfigs.getByName("release")
-    }
-}
+```yaml
+- uses: gradle/actions/setup-gradle@v3
+  with:
+    gradle-version: '8.7'
+- run: |
+    cd puzzle_android
+    gradle assembleDebug --no-daemon --stacktrace --no-configuration-cache
 ```
 
 ---
 
-## Tests
-
-### Unit tests (JVM)
-
-```bash
-./gradlew test
-```
-
-Reports: `app/build/reports/tests/testDebugUnitTest/index.html`
-
-### Instrumented / UI tests (requires emulator or device)
-
-```bash
-./gradlew connectedAndroidTest
-```
-
-Reports: `app/build/reports/androidTests/connected/index.html`
-
-### Lint
-
-```bash
-./gradlew lint
-```
-
-Report: `app/build/reports/lint-results-debug.html`
-
----
-
-## Project Structure
+## Projektstruktur
 
 ```
 puzzle_android/
 ├── gradle/
-│   ├── libs.versions.toml          # Version catalog
+│   ├── libs.versions.toml
 │   └── wrapper/
-│       └── gradle-wrapper.properties
 ├── app/
-│   ├── build.gradle.kts            # Module dependencies
-│   ├── proguard-rules.pro
-│   └── src/
-│       ├── main/
-│       │   ├── AndroidManifest.xml
-│       │   ├── kotlin/com/puzzle/android/
-│       │   │   ├── MainActivity.kt
-│       │   │   ├── PuzzleApplication.kt   # Manual DI entry point
-│       │   │   ├── data/
-│       │   │   │   ├── api/               # Retrofit + OkHttp
-│       │   │   │   ├── db/                # Room (entity, DAO, database)
-│       │   │   │   ├── model/             # Gson DTOs
-│       │   │   │   └── repository/        # Single source of truth
-│       │   │   ├── ui/
-│       │   │   │   ├── screens/           # Compose screens
-│       │   │   │   └── theme/             # M3 colour, type, theme
-│       │   │   └── viewmodel/             # StateFlow + ViewModel
-│       │   └── res/
-│       ├── test/                          # JVM unit tests
-│       └── androidTest/                   # Compose UI tests
-├── build.gradle.kts                # Root build
-├── settings.gradle.kts
-└── gradle.properties
+│   ├── build.gradle.kts
+│   └── src/main/
+│       ├── AndroidManifest.xml
+│       ├── assets/
+│       │   └── puzzle_image.jpg        ← eigenes Bild hier ablegen
+│       └── kotlin/com/puzzle/android/
+│           ├── MainActivity.kt
+│           ├── data/
+│           │   ├── image/              ← ImageGenerator, TestImageGenerator
+│           │   └── model/              ← PuzzleCategory, PuzzleStyle
+│           ├── game/
+│           │   ├── JigsawShapeGenerator.kt
+│           │   ├── JigsawState.kt      ← JigsawPiece, JigsawState
+│           │   └── PieceDefinition.kt
+│           ├── ui/
+│           │   ├── screens/
+│           │   │   ├── SetupScreen.kt
+│           │   │   └── PuzzleScreen.kt ← Board + Tray
+│           │   └── theme/
+│           └── viewmodel/
+│               └── PuzzleViewModel.kt
 ```
 
 ---
 
-## Architecture
+## Architektur
 
 ```
 MainActivity
-  └── StartScreen (Compose, stateless content composable)
-        └── MainViewModel
-              │   StateFlow<MainUiState>   — health check status
-              │   StateFlow<List<ExampleEntity>> — Room live list
-              └── ExampleRepository
-                    ├── ApiClient → ApiService → GET /api/health
-                    └── AppDatabase → ExampleDao → examples table
+  └── NavHost
+        ├── SetupScreen  →  PuzzleViewModel
+        └── PuzzleScreen →  PuzzleViewModel
+                               │  StateFlow<JigsawState>
+                               │  StateFlow<ImageBitmap?>
+                               └── ImageGenerator (Assets → Pollinations.ai → Fallback)
 ```
 
-Pattern: **MVVM + Repository**, no external DI framework (manual wiring in `PuzzleApplication`).
+Muster: **MVVM**, kein DI-Framework.
 
 ---
 
-## API Endpoints
+## Spielfeldkoordinaten
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/health` | Returns `{ "status": "ok", "version": "…" }` |
+- Alle Positionen sind **fraktional** (0..1), Mittelpunkt als Anteil der Spielfeldgröße.
+- `BOARD_FRACTION = 0.75f` — das Spielfeld nimmt 75% der Gesamtbreite ein.
+- Die Ablage (Tray) belegt die rechten 25%.
+- Snap-Schwelle: 40% der Zellgröße.
 
 ---
 
-## Dependencies
+## Abhängigkeiten
 
-| Library | Version | Purpose |
+| Bibliothek | Version | Zweck |
 |---|---|---|
-| Kotlin | 1.9.23 | Language |
-| Jetpack Compose BOM | 2024.04.01 | UI framework |
-| Material 3 | (from BOM) | Design system |
-| Retrofit 2 | 2.11.0 | HTTP client |
-| OkHttp | 4.12.0 | HTTP engine + logging |
-| Gson | 2.10.1 | JSON serialisation |
-| Room | 2.6.1 | Local SQLite ORM |
+| Kotlin | 1.9.23 | Sprache |
+| Jetpack Compose BOM | 2024.04.01 | UI-Framework |
+| Material 3 | (aus BOM) | Design-System |
+| OkHttp | 4.12.0 | HTTP-Client (Bilddownload) |
 | Coroutines | 1.8.0 | Async / Flow |
 | Lifecycle ViewModel | 2.7.0 | MVVM |
-| Mockito-Kotlin | 5.2.1 | Unit test mocking |

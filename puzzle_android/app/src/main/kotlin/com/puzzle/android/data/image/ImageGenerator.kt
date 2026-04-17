@@ -1,5 +1,6 @@
 package com.puzzle.android.data.image
 
+import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import com.puzzle.android.data.model.PuzzleCategory
@@ -40,4 +41,11 @@ object ImageGenerator {
             null
         }
     }
+
+    fun loadFromAssets(assets: AssetManager, filename: String = "puzzle_image.jpg"): Bitmap? =
+        try {
+            assets.open(filename).use { BitmapFactory.decodeStream(it) }
+        } catch (_: Exception) {
+            null
+        }
 }
