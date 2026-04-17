@@ -52,6 +52,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -260,6 +261,9 @@ fun PuzzleScreen(
                                         animationSpec = animSpec, label = "cy"
                                     )
 
+                                    val latestState = rememberUpdatedState(state)
+                                    val latestPiece = rememberUpdatedState(piece)
+
                                     if (path != null) {
                                         fun edgePadW(e: EdgeType) = if (e == EdgeType.BLANK) sTabPadW else 0f
                                         fun edgePadH(e: EdgeType) = if (e == EdgeType.BLANK) sTabPadH else 0f
@@ -290,24 +294,25 @@ fun PuzzleScreen(
                                                         onDragStart = { topId = piece.id },
                                                         onDrag = { change, amount ->
                                                             change.consume()
-                                                            // Divide by boardScale: screen delta → board delta
                                                             val bd = amount / boardScale
                                                             val newOff = (dragOffsets[piece.id] ?: Offset.Zero) + bd
                                                             dragOffsets[piece.id] = newOff
-                                                            if (piece.groupId != null) {
-                                                                state.pieces
-                                                                    .filter { it.groupId == piece.groupId && it.id != piece.id && !it.isPlaced }
+                                                            val gid = latestPiece.value.groupId
+                                                            if (gid != null) {
+                                                                latestState.value.pieces
+                                                                    .filter { it.groupId == gid && it.id != piece.id && !it.isPlaced }
                                                                     .forEach { dragOffsets[it.id] = newOff }
                                                             }
                                                         },
                                                         onDragEnd = {
+                                                            val p    = latestPiece.value
                                                             val off  = dragOffsets.remove(piece.id) ?: Offset.Zero
-                                                            val newX = (piece.x * widthPx  + off.x) / widthPx
-                                                            val newY = (piece.y * heightPx + off.y) / heightPx
+                                                            val newX = (p.x * widthPx  + off.x) / widthPx
+                                                            val newY = (p.y * heightPx + off.y) / heightPx
                                                             topId = -1
-                                                            if (piece.groupId != null) {
-                                                                state.pieces
-                                                                    .filter { it.groupId == piece.groupId && it.id != piece.id }
+                                                            if (p.groupId != null) {
+                                                                latestState.value.pieces
+                                                                    .filter { it.groupId == p.groupId && it.id != piece.id }
                                                                     .forEach { dragOffsets.remove(it.id) }
                                                                 vm.onGroupDropped(piece.id, newX, newY)
                                                             } else {
@@ -315,9 +320,10 @@ fun PuzzleScreen(
                                                             }
                                                         },
                                                         onDragCancel = {
-                                                            if (piece.groupId != null) {
-                                                                state.pieces
-                                                                    .filter { it.groupId == piece.groupId }
+                                                            val gid = latestPiece.value.groupId
+                                                            if (gid != null) {
+                                                                latestState.value.pieces
+                                                                    .filter { it.groupId == gid }
                                                                     .forEach { dragOffsets.remove(it.id) }
                                                             } else {
                                                                 dragOffsets.remove(piece.id)
