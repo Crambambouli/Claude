@@ -88,6 +88,12 @@ export class OverlayManager {
       this.callbacks.onToggleRecording();
     });
 
+    ipcMain.on('overlay-drag', (_e, dx: number, dy: number) => {
+      if (!this.win || this.win.isDestroyed()) return;
+      const [x, y] = this.win.getPosition();
+      this.win.setPosition(x + dx, y + dy);
+    });
+
     ipcMain.on('overlay-hide',          () => this.win?.hide());
     ipcMain.on('overlay-minimize',      () => this.win?.minimize());
     ipcMain.on('overlay-exit',          () => this.callbacks.onExit());
