@@ -29,6 +29,8 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.UnfoldLess
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -110,7 +112,7 @@ fun PuzzleScreen(
                             text     = "${state.placedCount}/${state.total} Teile",
                             style    = MaterialTheme.typography.labelLarge,
                             color    = MaterialTheme.colorScheme.onPrimaryContainer,
-                            modifier = Modifier.padding(end = 16.dp)
+                            modifier = Modifier.padding(end = 8.dp)
                         )
                     }
                 }
@@ -118,225 +120,253 @@ fun PuzzleScreen(
         }
     ) { padding ->
         val state = jigsaw
-        if (state == null || definitions.isEmpty()) {
-            Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
-                Text("Kein Puzzle geladen")
+        var isMinimized by remember { mutableStateOf(false) }
+
+        Box(Modifier.fillMaxSize().padding(padding)) {
+            if (state != null && definitions.isNotEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp),
+                    horizontalAlignment = Alignment.End
+                ) {
+                    IconButton(
+                        onClick = { isMinimized = !isMinimized },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(Icons.Default.UnfoldLess, contentDescription = "Minimieren", tint = MaterialTheme.colorScheme.primary)
+                    }
+                    IconButton(
+                        onClick = { vm.backToSetup(); navController.popBackStack() },
+                        modifier = Modifier.size(40.dp)
+                    ) {
+                        Icon(Icons.Filled.Close, contentDescription = "Schließen", tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
             }
-        } else {
-            Column(Modifier.fillMaxSize().padding(padding)) {
+            }
+
+            if (state == null || definitions.isEmpty()) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Text("Kein Puzzle geladen")
+                }
+            } else {
+                Column(Modifier.fillMaxSize()) {
 
                 // ── Win banner ───────────────────────────────────────────────
-                AnimatedVisibility(visible = state.isSolved, enter = fadeIn(), exit = fadeOut()) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth().padding(8.dp),
-                        colors   = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.tertiaryContainer
-                        )
-                    ) {
-                        Text(
-                            text       = "Puzzle gelöst! ${state.total} Teile",
-                            style      = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            color      = MaterialTheme.colorScheme.onTertiaryContainer,
-                            modifier   = Modifier.padding(16.dp).align(Alignment.CenterHorizontally)
-                        )
+                if (!isMinimized) {
+                    AnimatedVisibility(visible = state.isSolved, enter = fadeIn(), exit = fadeOut()) {
+                        Card(
+                            modifier = Modifier.fillMaxWidth().padding(8.dp),
+                            colors   = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.tertiaryContainer
+                            )
+                        ) {
+                            Text(
+                                text       = "Puzzle gelöst! ${state.total} Teile",
+                                style      = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                color      = MaterialTheme.colorScheme.onTertiaryContainer,
+                                modifier   = Modifier.padding(16.dp).align(Alignment.CenterHorizontally)
+                            )
+                        }
                     }
                 }
 
-                // ── Main play area ───────────────────────────────────────────
-                BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
-                    val widthPx  = constraints.maxWidth.toFloat()
-                    val heightPx = constraints.maxHeight.toFloat()
-                    val density  = LocalDensity.current
+                // ── Main play area (board only) ──────────────────────────────
+                if (!isMinimized) {
+                    BoxWithConstraints(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                        val widthPx  = constraints.maxWidth.toFloat()
+                        val heightPx = constraints.maxHeight.toFloat()
+                        val density  = LocalDensity.current
 
-                    val boardFrac = JigsawState.BOARD_FRACTION
-                    val boardW    = widthPx * boardFrac
-                    val cellWPx   = boardW / state.cols
-                    val cellHPx   = heightPx / state.rows
+                        val boardFrac = JigsawState.BOARD_FRACTION
+                        val boardW    = widthPx * boardFrac
+                        val cellWPx   = boardW / state.cols
+                        val cellHPx   = heightPx / state.rows
 
-                    val tabPadW = cellHPx * JigsawShapeGenerator.TAB_PEAK_FRACTION * 1.5f
-                    val tabPadH = cellWPx * JigsawShapeGenerator.TAB_PEAK_FRACTION * 1.5f
+                        val tabPadW = cellHPx * JigsawShapeGenerator.TAB_PEAK_FRACTION * 1.5f
+                        val tabPadH = cellWPx * JigsawShapeGenerator.TAB_PEAK_FRACTION * 1.5f
 
-                    val paths = remember(state.rows, state.cols, cellWPx, cellHPx) {
-                        definitions.associateBy(
-                            { it.row * state.cols + it.col },
-                            { JigsawShapeGenerator.createPiecePath(it, cellWPx, cellHPx) }
-                        )
-                    }
-
-                    val dragOffsets = remember { mutableStateMapOf<Int, Offset>() }
-                    var topId by remember { mutableIntStateOf(-1) }
-
-                    // ── Board background & ghost grid ────────────────────────
-                    Canvas(modifier = Modifier.fillMaxSize()) {
-                        drawRect(
-                            color   = Color(0xFFF0F0F8),
-                            topLeft = Offset(boardW, 0f),
-                            size    = Size(widthPx - boardW, heightPx)
-                        )
-                        for (r in 0 until state.rows) {
-                            for (c in 0 until state.cols) {
-                                val placed = state.pieces.any {
-                                    it.definition.row == r && it.definition.col == c && it.isPlaced
-                                }
-                                drawRect(
-                                    color   = if (placed) Color(0x1800C853) else Color(0x12000000),
-                                    topLeft = Offset(c * cellWPx, r * cellHPx),
-                                    size    = Size(cellWPx, cellHPx),
-                                    style   = Stroke(1.5f)
-                                )
-                            }
+                        val paths = remember(state.rows, state.cols, cellWPx, cellHPx) {
+                            definitions.associateBy(
+                                { it.row * state.cols + it.col },
+                                { JigsawShapeGenerator.createPiecePath(it, cellWPx, cellHPx) }
+                            )
                         }
-                        drawLine(
-                            color       = Color(0x33000000),
-                            start       = Offset(boardW, 0f),
-                            end         = Offset(boardW, heightPx),
-                            strokeWidth = 1f
-                        )
-                    }
 
-                    // ── Board pieces (not in tray) ───────────────────────────
-                    val boardPieces = remember(state.pieces, topId) {
-                        state.pieces
-                            .filter { !it.isInTray }
-                            .sortedWith(compareBy {
-                                when {
-                                    it.id == topId -> 2
-                                    !it.isPlaced   -> 1
-                                    else           -> 0
-                                }
-                            })
-                    }
+                        val dragOffsets = remember { mutableStateMapOf<Int, Offset>() }
+                        var topId by remember { mutableIntStateOf(-1) }
 
-                    boardPieces.forEach { piece ->
-                        key(piece.id) {
-                            val drag       = dragOffsets[piece.id] ?: Offset.Zero
-                            val def        = piece.definition
-                            val path       = paths[piece.id]
-                            val isDragging = dragOffsets.containsKey(piece.id)
-
-                            val (snapFX, snapFY) = state.correctCenter(piece)
-                            val animSpec: AnimationSpec<Float> =
-                                if (piece.isPlaced) spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)
-                                else snap()
-                            val screenCX by animateFloatAsState(
-                                targetValue   = if (piece.isPlaced) snapFX * widthPx  else piece.x * widthPx  + drag.x,
-                                animationSpec = animSpec, label = "cx"
+                        // ── Board background & ghost grid ────────────────────────
+                        Canvas(modifier = Modifier.fillMaxSize()) {
+                            drawRect(
+                                color   = Color(0xFFF0F0F8),
+                                topLeft = Offset(boardW, 0f),
+                                size    = Size(widthPx - boardW, heightPx)
                             )
-                            val screenCY by animateFloatAsState(
-                                targetValue   = if (piece.isPlaced) snapFY * heightPx else piece.y * heightPx + drag.y,
-                                animationSpec = animSpec, label = "cy"
-                            )
-
-                            if (path != null) {
-                                fun edgePadW(e: EdgeType) = if (e == EdgeType.BLANK) tabPadW else 0f
-                                fun edgePadH(e: EdgeType) = if (e == EdgeType.BLANK) tabPadH else 0f
-                                val padLeft  = edgePadW(def.left)
-                                val padTop   = edgePadH(def.top)
-                                val padRight = edgePadW(def.right)
-                                val padBot   = edgePadH(def.bottom)
-                                val canvasW  = padLeft + cellWPx + padRight
-                                val canvasH  = padTop  + cellHPx + padBot
-
-                                val leftPx = screenCX - cellWPx / 2f - padLeft
-                                val topPx  = screenCY - cellHPx / 2f - padTop
-
-                                val canvasDpW  = with(density) { canvasW.toDp() }
-                                val canvasDpH  = with(density) { canvasH.toDp() }
-
-                                val offsetPath = remember(path, padLeft, padTop) {
-                                    Path().apply { addPath(path, Offset(padLeft, padTop)) }
-                                }
-
-                                Box(
-                                    Modifier
-                                        .offset { IntOffset(leftPx.roundToInt(), topPx.roundToInt()) }
-                                        .size(canvasDpW, canvasDpH)
-                                        .pointerInput(piece.id, piece.isPlaced) {
-                                            if (piece.isPlaced) return@pointerInput
-                                            detectDragGestures(
-                                                onDragStart = { topId = piece.id },
-                                                onDrag = { change, amount ->
-                                                    change.consume()
-                                                    dragOffsets[piece.id] =
-                                                        (dragOffsets[piece.id] ?: Offset.Zero) + amount
-                                                },
-                                                onDragEnd = {
-                                                    val off  = dragOffsets.remove(piece.id) ?: Offset.Zero
-                                                    val newX = (piece.x * widthPx  + off.x) / widthPx
-                                                    val newY = (piece.y * heightPx + off.y) / heightPx
-                                                    topId = -1
-                                                    vm.onPieceDropped(piece.id, newX, newY)
-                                                },
-                                                onDragCancel = {
-                                                    dragOffsets.remove(piece.id)
-                                                    topId = -1
-                                                }
-                                            )
-                                        }
-                                ) {
-                                    PieceCanvas(
-                                        piece      = piece,
-                                        def        = def,
-                                        path       = offsetPath,
-                                        bitmap     = bitmap,
-                                        canvasW    = canvasW,
-                                        canvasH    = canvasH,
-                                        padLeft    = padLeft,
-                                        padTop     = padTop,
-                                        cellWPx    = cellWPx,
-                                        cellHPx    = cellHPx,
-                                        totalCols  = state.cols,
-                                        totalRows  = state.rows,
-                                        isPlaced   = piece.isPlaced,
-                                        isDragging = isDragging
+                            for (r in 0 until state.rows) {
+                                for (c in 0 until state.cols) {
+                                    val placed = state.pieces.any {
+                                        it.definition.row == r && it.definition.col == c && it.isPlaced
+                                    }
+                                    drawRect(
+                                        color   = if (placed) Color(0x1800C853) else Color(0x12000000),
+                                        topLeft = Offset(c * cellWPx, r * cellHPx),
+                                        size    = Size(cellWPx, cellHPx),
+                                        style   = Stroke(1.5f)
                                     )
                                 }
                             }
+                            drawLine(
+                                color       = Color(0x33000000),
+                                start       = Offset(boardW, 0f),
+                                end         = Offset(boardW, heightPx),
+                                strokeWidth = 1f
+                            )
                         }
-                    }
 
-                    // ── Tray: scrollable thumbnail grid ──────────────────────
-                    val trayPieces = remember(state.pieces) {
-                        state.pieces.filter { it.isInTray }
-                    }
+                        // ── Board pieces (not in tray) ───────────────────────────
+                        val boardPieces = remember(state.pieces, topId) {
+                            state.pieces
+                                .filter { !it.isInTray }
+                                .sortedWith(compareBy {
+                                    when {
+                                        it.id == topId -> 2
+                                        !it.isPlaced   -> 1
+                                        else           -> 0
+                                    }
+                                })
+                        }
 
-                    val trayWidthDp = with(density) { (widthPx - boardW).toDp() }
+                        boardPieces.forEach { piece ->
+                            key(piece.id) {
+                                val drag       = dragOffsets[piece.id] ?: Offset.Zero
+                                val def        = piece.definition
+                                val path       = paths[piece.id]
+                                val isDragging = dragOffsets.containsKey(piece.id)
 
-                    Box(
-                        modifier = Modifier
-                            .offset { IntOffset(boardW.roundToInt(), 0) }
-                            .width(trayWidthDp)
-                            .fillMaxHeight()
-                            .background(Color(0xFFF0F0F8))
-                    ) {
-                        if (trayPieces.isEmpty()) {
-                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                                Text(
-                                    text      = "Alle Teile\nauf dem Feld",
-                                    style     = MaterialTheme.typography.labelSmall,
-                                    textAlign = TextAlign.Center,
-                                    color     = MaterialTheme.colorScheme.onSurfaceVariant
+                                val (snapFX, snapFY) = state.correctCenter(piece)
+                                val animSpec: AnimationSpec<Float> =
+                                    if (piece.isPlaced) spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)
+                                    else snap()
+                                val screenCX by animateFloatAsState(
+                                    targetValue   = if (piece.isPlaced) snapFX * widthPx  else piece.x * widthPx  + drag.x,
+                                    animationSpec = animSpec, label = "cx"
                                 )
-                            }
-                        } else {
-                            LazyVerticalGrid(
-                                columns               = GridCells.Fixed(2),
-                                modifier              = Modifier.fillMaxSize(),
-                                contentPadding        = PaddingValues(4.dp),
-                                horizontalArrangement = Arrangement.spacedBy(3.dp),
-                                verticalArrangement   = Arrangement.spacedBy(3.dp)
-                            ) {
-                                items(trayPieces, key = { it.id }) { piece ->
-                                    PieceThumbnail(
-                                        piece     = piece,
-                                        def       = piece.definition,
-                                        bitmap    = bitmap,
-                                        totalRows = state.rows,
-                                        totalCols = state.cols,
-                                        onClick   = { vm.movePieceToBoard(piece.id) }
-                                    )
+                                val screenCY by animateFloatAsState(
+                                    targetValue   = if (piece.isPlaced) snapFY * heightPx else piece.y * heightPx + drag.y,
+                                    animationSpec = animSpec, label = "cy"
+                                )
+
+                                if (path != null) {
+                                    fun edgePadW(e: EdgeType) = if (e == EdgeType.BLANK) tabPadW else 0f
+                                    fun edgePadH(e: EdgeType) = if (e == EdgeType.BLANK) tabPadH else 0f
+                                    val padLeft  = edgePadW(def.left)
+                                    val padTop   = edgePadH(def.top)
+                                    val padRight = edgePadW(def.right)
+                                    val padBot   = edgePadH(def.bottom)
+                                    val canvasW  = padLeft + cellWPx + padRight
+                                    val canvasH  = padTop  + cellHPx + padBot
+
+                                    val leftPx = screenCX - cellWPx / 2f - padLeft
+                                    val topPx  = screenCY - cellHPx / 2f - padTop
+
+                                    val canvasDpW  = with(density) { canvasW.toDp() }
+                                    val canvasDpH  = with(density) { canvasH.toDp() }
+
+                                    val offsetPath = remember(path, padLeft, padTop) {
+                                        Path().apply { addPath(path, Offset(padLeft, padTop)) }
+                                    }
+
+                                    Box(
+                                        Modifier
+                                            .offset { IntOffset(leftPx.roundToInt(), topPx.roundToInt()) }
+                                            .size(canvasDpW, canvasDpH)
+                                            .pointerInput(piece.id, piece.isPlaced) {
+                                                if (piece.isPlaced) return@pointerInput
+                                                detectDragGestures(
+                                                    onDragStart = { topId = piece.id },
+                                                    onDrag = { change, amount ->
+                                                        change.consume()
+                                                        dragOffsets[piece.id] =
+                                                            (dragOffsets[piece.id] ?: Offset.Zero) + amount
+                                                    },
+                                                    onDragEnd = {
+                                                        val off  = dragOffsets.remove(piece.id) ?: Offset.Zero
+                                                        val newX = (piece.x * widthPx  + off.x) / widthPx
+                                                        val newY = (piece.y * heightPx + off.y) / heightPx
+                                                        topId = -1
+                                                        vm.onPieceDropped(piece.id, newX, newY)
+                                                    },
+                                                    onDragCancel = {
+                                                        dragOffsets.remove(piece.id)
+                                                        topId = -1
+                                                    }
+                                                )
+                                            }
+                                    ) {
+                                        PieceCanvas(
+                                            piece      = piece,
+                                            def        = def,
+                                            path       = offsetPath,
+                                            bitmap     = bitmap,
+                                            canvasW    = canvasW,
+                                            canvasH    = canvasH,
+                                            padLeft    = padLeft,
+                                            padTop     = padTop,
+                                            cellWPx    = cellWPx,
+                                            cellHPx    = cellHPx,
+                                            totalCols  = state.cols,
+                                            totalRows  = state.rows,
+                                            isPlaced   = piece.isPlaced,
+                                            isDragging = isDragging
+                                        )
+                                    }
                                 }
+                            }
+                        }
+
+                    }
+                }
+
+                // ── Tray: scrollable thumbnail grid (bottom) ─────────────────
+                val trayPieces = remember(state.pieces) {
+                    state.pieces.filter { it.isInTray }
+                }
+
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp)
+                        .background(Color(0xFFF0F0F8))
+                ) {
+                    if (trayPieces.isEmpty()) {
+                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                            Text(
+                                text      = "Alle Teile auf dem Feld",
+                                style     = MaterialTheme.typography.labelSmall,
+                                textAlign = TextAlign.Center,
+                                color     = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    } else {
+                        LazyVerticalGrid(
+                            columns               = GridCells.Fixed(6),
+                            modifier              = Modifier.fillMaxSize(),
+                            contentPadding        = PaddingValues(4.dp),
+                            horizontalArrangement = Arrangement.spacedBy(3.dp),
+                            verticalArrangement   = Arrangement.spacedBy(3.dp)
+                        ) {
+                            items(trayPieces, key = { it.id }) { piece ->
+                                PieceThumbnail(
+                                    piece     = piece,
+                                    def       = piece.definition,
+                                    bitmap    = bitmap,
+                                    totalRows = state.rows,
+                                    totalCols = state.cols,
+                                    onClick   = { vm.movePieceToBoard(piece.id) }
+                                )
                             }
                         }
                     }
