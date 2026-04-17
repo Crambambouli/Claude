@@ -156,8 +156,8 @@ fun PuzzleScreen(
                     val cellWPx   = boardW / state.cols
                     val cellHPx   = heightPx / state.rows
 
-                    val tabPadW = cellWPx * JigsawShapeGenerator.TAB_PEAK_FRACTION
-                    val tabPadH = cellHPx * JigsawShapeGenerator.TAB_PEAK_FRACTION
+                    val tabPadW = cellHPx * JigsawShapeGenerator.TAB_PEAK_FRACTION
+                    val tabPadH = cellWPx * JigsawShapeGenerator.TAB_PEAK_FRACTION
 
                     val paths = remember(state.rows, state.cols, cellWPx, cellHPx) {
                         definitions.associateBy(
