@@ -56,7 +56,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.graphicsLayer
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -67,7 +66,6 @@ import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
@@ -156,6 +154,8 @@ fun PuzzleScreen(
                 // ── Main play area ───────────────────────────────────────────
                 if (!isMinimized) {
                     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+
+                        // boardScale / boardOffset live here so piece-drag lambdas capture them
                         var boardScale  by remember { mutableFloatStateOf(1f) }
                         var boardOffset by remember { mutableStateOf(Offset.Zero) }
 
@@ -164,7 +164,7 @@ fun PuzzleScreen(
                                 .fillMaxSize()
                                 .pointerInput(Unit) {
                                     detectTransformGestures { _, pan, zoom, _ ->
-                                        boardScale = (boardScale * zoom).coerceIn(0.3f, 5f)
+                                        boardScale = (boardScale * zoom).coerceIn(0.25f, 5f)
                                         boardOffset += pan
                                     }
                                 }
@@ -173,181 +173,184 @@ fun PuzzleScreen(
                             val heightPx = constraints.maxHeight.toFloat()
                             val density  = LocalDensity.current
 
-                            val boardFrac = JigsawState.BOARD_FRACTION
-                            val boardW    = widthPx * boardFrac
-                            val cellWPx   = boardW / state.cols
-                            val cellHPx   = heightPx / state.rows
+                            // Board-space cell sizes (unscaled)
+                            val boardW   = widthPx * JigsawState.BOARD_FRACTION
+                            val cellWPx  = boardW / state.cols
+                            val cellHPx  = heightPx / state.rows
 
-                            val tabPadW = cellHPx * JigsawShapeGenerator.TAB_PEAK_FRACTION * 1.5f
-                            val tabPadH = cellWPx * JigsawShapeGenerator.TAB_PEAK_FRACTION * 1.5f
+                            // Screen-space cell sizes (scale applied)
+                            // Quantised so paths only recompute at 5%-steps
+                            val scaleKey = (boardScale * 20).roundToInt()
+                            val sCellW   = cellWPx * (scaleKey / 20f)
+                            val sCellH   = cellHPx * (scaleKey / 20f)
 
-                            val paths = remember(state.rows, state.cols, cellWPx, cellHPx) {
+                            val sTabPadW = sCellH * JigsawShapeGenerator.TAB_PEAK_FRACTION * 1.5f
+                            val sTabPadH = sCellW * JigsawShapeGenerator.TAB_PEAK_FRACTION * 1.5f
+
+                            val paths = remember(state.rows, state.cols, sCellW, sCellH) {
                                 definitions.associateBy(
                                     { it.row * state.cols + it.col },
-                                    { JigsawShapeGenerator.createPiecePath(it, cellWPx, cellHPx) }
+                                    { JigsawShapeGenerator.createPiecePath(it, sCellW, sCellH) }
                                 )
                             }
 
                             val dragOffsets = remember { mutableStateMapOf<Int, Offset>() }
                             var topId by remember { mutableIntStateOf(-1) }
 
-                            // ── Transformierter Board-Bereich ────────────────
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .graphicsLayer {
-                                        scaleX          = boardScale
-                                        scaleY          = boardScale
-                                        translationX    = boardOffset.x
-                                        translationY    = boardOffset.y
-                                        transformOrigin = TransformOrigin(0f, 0f)
-                                    }
-                            ) {
-                                Canvas(modifier = Modifier.fillMaxSize()) {
-                                    for (r in 0 until state.rows) {
-                                        for (c in 0 until state.cols) {
-                                            val placed = state.pieces.any {
-                                                it.definition.row == r && it.definition.col == c && it.isPlaced
-                                            }
-                                            drawRect(
-                                                color   = if (placed) Color(0x1800C853) else Color(0x12000000),
-                                                topLeft = Offset(c * cellWPx, r * cellHPx),
-                                                size    = Size(cellWPx, cellHPx),
-                                                style   = Stroke(1.5f)
-                                            )
+                            // ── Board background & ghost grid ────────────────
+                            Canvas(modifier = Modifier.fillMaxSize()) {
+                                val ox = boardOffset.x
+                                val oy = boardOffset.y
+                                for (r in 0 until state.rows) {
+                                    for (c in 0 until state.cols) {
+                                        val placed = state.pieces.any {
+                                            it.definition.row == r && it.definition.col == c && it.isPlaced
                                         }
+                                        drawRect(
+                                            color   = if (placed) Color(0x1800C853) else Color(0x12000000),
+                                            topLeft = Offset(c * sCellW + ox, r * sCellH + oy),
+                                            size    = Size(sCellW, sCellH),
+                                            style   = Stroke(1.5f)
+                                        )
                                     }
-                                    drawLine(
-                                        color       = Color(0x33000000),
-                                        start       = Offset(boardW, 0f),
-                                        end         = Offset(boardW, heightPx),
-                                        strokeWidth = 1f
+                                }
+                                val boardLineX = boardW * boardScale + boardOffset.x
+                                drawLine(
+                                    color       = Color(0x33000000),
+                                    start       = Offset(boardLineX, 0f),
+                                    end         = Offset(boardLineX, heightPx),
+                                    strokeWidth = 1f
+                                )
+                            }
+
+                            // ── Pieces ───────────────────────────────────────
+                            val boardPieces = remember(state.pieces, topId) {
+                                state.pieces
+                                    .filter { !it.isInTray }
+                                    .sortedWith(compareBy {
+                                        when {
+                                            it.id == topId -> 2
+                                            !it.isPlaced   -> 1
+                                            else           -> 0
+                                        }
+                                    })
+                            }
+
+                            boardPieces.forEach { piece ->
+                                key(piece.id) {
+                                    val drag       = dragOffsets[piece.id] ?: Offset.Zero
+                                    val def        = piece.definition
+                                    val path       = paths[piece.id]
+                                    val isDragging = dragOffsets.containsKey(piece.id)
+
+                                    val (snapFX, snapFY) = state.correctCenter(piece)
+                                    val animSpec: AnimationSpec<Float> =
+                                        if (piece.isPlaced) spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)
+                                        else snap()
+
+                                    // Compute screen-space centre: board-fraction → board-px → scaled+offset
+                                    val targetBX = if (piece.isPlaced) snapFX * widthPx else piece.x * widthPx + drag.x
+                                    val targetBY = if (piece.isPlaced) snapFY * heightPx else piece.y * heightPx + drag.y
+                                    val screenCX by animateFloatAsState(
+                                        targetValue   = targetBX * boardScale + boardOffset.x,
+                                        animationSpec = animSpec, label = "cx"
                                     )
-                                }
+                                    val screenCY by animateFloatAsState(
+                                        targetValue   = targetBY * boardScale + boardOffset.y,
+                                        animationSpec = animSpec, label = "cy"
+                                    )
 
-                                val boardPieces = remember(state.pieces, topId) {
-                                    state.pieces
-                                        .filter { !it.isInTray }
-                                        .sortedWith(compareBy {
-                                            when {
-                                                it.id == topId -> 2
-                                                !it.isPlaced   -> 1
-                                                else           -> 0
-                                            }
-                                        })
-                                }
+                                    if (path != null) {
+                                        fun edgePadW(e: EdgeType) = if (e == EdgeType.BLANK) sTabPadW else 0f
+                                        fun edgePadH(e: EdgeType) = if (e == EdgeType.BLANK) sTabPadH else 0f
+                                        val padLeft  = edgePadW(def.left)
+                                        val padTop   = edgePadH(def.top)
+                                        val padRight = edgePadW(def.right)
+                                        val padBot   = edgePadH(def.bottom)
+                                        val canvasW  = padLeft + sCellW + padRight
+                                        val canvasH  = padTop  + sCellH + padBot
 
-                                boardPieces.forEach { piece ->
-                                    key(piece.id) {
-                                        val drag       = dragOffsets[piece.id] ?: Offset.Zero
-                                        val def        = piece.definition
-                                        val path       = paths[piece.id]
-                                        val isDragging = dragOffsets.containsKey(piece.id)
+                                        val leftPx = screenCX - sCellW / 2f - padLeft
+                                        val topPx  = screenCY - sCellH / 2f - padTop
 
-                                        val (snapFX, snapFY) = state.correctCenter(piece)
-                                        val animSpec: AnimationSpec<Float> =
-                                            if (piece.isPlaced) spring(Spring.DampingRatioMediumBouncy, Spring.StiffnessMedium)
-                                            else snap()
-                                        val screenCX by animateFloatAsState(
-                                            targetValue   = if (piece.isPlaced) snapFX * widthPx  else piece.x * widthPx  + drag.x,
-                                            animationSpec = animSpec, label = "cx"
-                                        )
-                                        val screenCY by animateFloatAsState(
-                                            targetValue   = if (piece.isPlaced) snapFY * heightPx else piece.y * heightPx + drag.y,
-                                            animationSpec = animSpec, label = "cy"
-                                        )
+                                        val canvasDpW  = with(density) { canvasW.toDp() }
+                                        val canvasDpH  = with(density) { canvasH.toDp() }
 
-                                        if (path != null) {
-                                            fun edgePadW(e: EdgeType) = if (e == EdgeType.BLANK) tabPadW else 0f
-                                            fun edgePadH(e: EdgeType) = if (e == EdgeType.BLANK) tabPadH else 0f
-                                            val padLeft  = edgePadW(def.left)
-                                            val padTop   = edgePadH(def.top)
-                                            val padRight = edgePadW(def.right)
-                                            val padBot   = edgePadH(def.bottom)
-                                            val canvasW  = padLeft + cellWPx + padRight
-                                            val canvasH  = padTop  + cellHPx + padBot
+                                        val offsetPath = remember(path, padLeft, padTop) {
+                                            Path().apply { addPath(path, Offset(padLeft, padTop)) }
+                                        }
 
-                                            val leftPx = screenCX - cellWPx / 2f - padLeft
-                                            val topPx  = screenCY - cellHPx / 2f - padTop
-
-                                            val canvasDpW  = with(density) { canvasW.toDp() }
-                                            val canvasDpH  = with(density) { canvasH.toDp() }
-
-                                            val offsetPath = remember(path, padLeft, padTop) {
-                                                Path().apply { addPath(path, Offset(padLeft, padTop)) }
-                                            }
-
-                                            Box(
-                                                Modifier
-                                                    .offset { IntOffset(leftPx.roundToInt(), topPx.roundToInt()) }
-                                                    .size(canvasDpW, canvasDpH)
-                                                    .pointerInput(piece.id, piece.isPlaced) {
-                                                        if (piece.isPlaced) return@pointerInput
-                                                        detectDragGestures(
-                                                            onDragStart = { topId = piece.id },
-                                                            onDrag = { change, amount ->
-                                                                change.consume()
-                                                                val scaled = amount / boardScale
-                                                                val newOff = (dragOffsets[piece.id] ?: Offset.Zero) + scaled
-                                                                dragOffsets[piece.id] = newOff
-                                                                // Sync all group members to same offset
-                                                                if (piece.groupId != null) {
-                                                                    state.pieces
-                                                                        .filter { it.groupId == piece.groupId && it.id != piece.id && !it.isPlaced }
-                                                                        .forEach { dragOffsets[it.id] = newOff }
-                                                                }
-                                                            },
-                                                            onDragEnd = {
-                                                                val off  = dragOffsets.remove(piece.id) ?: Offset.Zero
-                                                                val newX = (piece.x * widthPx  + off.x) / widthPx
-                                                                val newY = (piece.y * heightPx + off.y) / heightPx
-                                                                topId = -1
-                                                                if (piece.groupId != null) {
-                                                                    state.pieces
-                                                                        .filter { it.groupId == piece.groupId && it.id != piece.id }
-                                                                        .forEach { dragOffsets.remove(it.id) }
-                                                                    vm.onGroupDropped(piece.id, newX, newY)
-                                                                } else {
-                                                                    vm.onPieceDropped(piece.id, newX, newY)
-                                                                }
-                                                            },
-                                                            onDragCancel = {
-                                                                if (piece.groupId != null) {
-                                                                    state.pieces
-                                                                        .filter { it.groupId == piece.groupId }
-                                                                        .forEach { dragOffsets.remove(it.id) }
-                                                                } else {
-                                                                    dragOffsets.remove(piece.id)
-                                                                }
-                                                                topId = -1
+                                        Box(
+                                            Modifier
+                                                .offset { IntOffset(leftPx.roundToInt(), topPx.roundToInt()) }
+                                                .size(canvasDpW, canvasDpH)
+                                                .pointerInput(piece.id, piece.isPlaced) {
+                                                    if (piece.isPlaced) return@pointerInput
+                                                    detectDragGestures(
+                                                        onDragStart = { topId = piece.id },
+                                                        onDrag = { change, amount ->
+                                                            change.consume()
+                                                            // Divide by boardScale: screen delta → board delta
+                                                            val bd = amount / boardScale
+                                                            val newOff = (dragOffsets[piece.id] ?: Offset.Zero) + bd
+                                                            dragOffsets[piece.id] = newOff
+                                                            if (piece.groupId != null) {
+                                                                state.pieces
+                                                                    .filter { it.groupId == piece.groupId && it.id != piece.id && !it.isPlaced }
+                                                                    .forEach { dragOffsets[it.id] = newOff }
                                                             }
-                                                        )
-                                                    }
-                                            ) {
-                                                PieceCanvas(
-                                                    piece      = piece,
-                                                    def        = def,
-                                                    path       = offsetPath,
-                                                    bitmap     = bitmap,
-                                                    canvasW    = canvasW,
-                                                    canvasH    = canvasH,
-                                                    padLeft    = padLeft,
-                                                    padTop     = padTop,
-                                                    cellWPx    = cellWPx,
-                                                    cellHPx    = cellHPx,
-                                                    totalCols  = state.cols,
-                                                    totalRows  = state.rows,
-                                                    isPlaced   = piece.isPlaced,
-                                                    isDragging = isDragging
-                                                )
-                                            }
+                                                        },
+                                                        onDragEnd = {
+                                                            val off  = dragOffsets.remove(piece.id) ?: Offset.Zero
+                                                            val newX = (piece.x * widthPx  + off.x) / widthPx
+                                                            val newY = (piece.y * heightPx + off.y) / heightPx
+                                                            topId = -1
+                                                            if (piece.groupId != null) {
+                                                                state.pieces
+                                                                    .filter { it.groupId == piece.groupId && it.id != piece.id }
+                                                                    .forEach { dragOffsets.remove(it.id) }
+                                                                vm.onGroupDropped(piece.id, newX, newY)
+                                                            } else {
+                                                                vm.onPieceDropped(piece.id, newX, newY)
+                                                            }
+                                                        },
+                                                        onDragCancel = {
+                                                            if (piece.groupId != null) {
+                                                                state.pieces
+                                                                    .filter { it.groupId == piece.groupId }
+                                                                    .forEach { dragOffsets.remove(it.id) }
+                                                            } else {
+                                                                dragOffsets.remove(piece.id)
+                                                            }
+                                                            topId = -1
+                                                        }
+                                                    )
+                                                }
+                                        ) {
+                                            PieceCanvas(
+                                                piece      = piece,
+                                                def        = def,
+                                                path       = offsetPath,
+                                                bitmap     = bitmap,
+                                                canvasW    = canvasW,
+                                                canvasH    = canvasH,
+                                                padLeft    = padLeft,
+                                                padTop     = padTop,
+                                                cellWPx    = sCellW,
+                                                cellHPx    = sCellH,
+                                                totalCols  = state.cols,
+                                                totalRows  = state.rows,
+                                                isPlaced   = piece.isPlaced,
+                                                isDragging = isDragging
+                                            )
                                         }
                                     }
                                 }
                             }
 
-                            // ── Vorschaubild (nicht transformiert) ───────────
-                            if (bitmap != null) {
+                            // ── Vorschaubild (unverändert, immer unten-links) ─
+                            val bmp = bitmap
+                            if (bmp != null) {
                                 Box(
                                     modifier = Modifier
                                         .align(Alignment.BottomStart)
@@ -359,7 +362,7 @@ fun PuzzleScreen(
                                 ) {
                                     Canvas(modifier = Modifier.fillMaxSize()) {
                                         drawImage(
-                                            image     = bitmap,
+                                            image     = bmp,
                                             dstOffset = IntOffset.Zero,
                                             dstSize   = IntSize(size.width.toInt(), size.height.toInt())
                                         )
@@ -391,10 +394,8 @@ fun PuzzleScreen(
                     }
                 }
 
-                // ── Tray: scrollbares Thumbnail-Gitter (unten) ──────────────
-                val trayPieces = remember(state.pieces) {
-                    state.pieces.filter { it.isInTray }
-                }
+                // ── Tray ────────────────────────────────────────────────────
+                val trayPieces = remember(state.pieces) { state.pieces.filter { it.isInTray } }
 
                 Box(
                     modifier = Modifier
@@ -478,20 +479,21 @@ private fun PieceCanvas(
 ) {
     Canvas(modifier = Modifier.fillMaxSize()) {
         clipPath(path) {
-            if (bitmap != null) {
-                val scaleX  = bitmap.width.toFloat()  / (totalCols * cellWPx)
-                val scaleY  = bitmap.height.toFloat() / (totalRows * cellHPx)
+            val bmp = bitmap
+            if (bmp != null) {
+                val scaleX  = bmp.width.toFloat()  / (totalCols * cellWPx)
+                val scaleY  = bmp.height.toFloat() / (totalRows * cellHPx)
                 val srcLeft = (def.col * cellWPx - padLeft) * scaleX
                 val srcTop  = (def.row * cellHPx - padTop)  * scaleY
                 val srcW    = (canvasW * scaleX).toInt().coerceAtLeast(1)
                 val srcH    = (canvasH * scaleY).toInt().coerceAtLeast(1)
 
                 drawImage(
-                    image     = bitmap,
+                    image     = bmp,
                     srcOffset = IntOffset(srcLeft.toInt().coerceAtLeast(0), srcTop.toInt().coerceAtLeast(0)),
                     srcSize   = IntSize(
-                        srcW.coerceAtMost(bitmap.width  - srcLeft.toInt().coerceAtLeast(0)),
-                        srcH.coerceAtMost(bitmap.height - srcTop.toInt().coerceAtLeast(0))
+                        srcW.coerceAtMost(bmp.width  - srcLeft.toInt().coerceAtLeast(0)),
+                        srcH.coerceAtMost(bmp.height - srcTop.toInt().coerceAtLeast(0))
                     ),
                     dstOffset = IntOffset.Zero,
                     dstSize   = IntSize(size.width.toInt(), size.height.toInt())
@@ -541,15 +543,16 @@ private fun PieceThumbnail(
             val path = JigsawShapeGenerator.createPiecePath(def, w, h)
 
             clipPath(path) {
-                if (bitmap != null) {
-                    val scaleX = bitmap.width.toFloat()  / totalCols
-                    val scaleY = bitmap.height.toFloat() / totalRows
+                val bmp = bitmap
+                if (bmp != null) {
+                    val scaleX = bmp.width.toFloat()  / totalCols
+                    val scaleY = bmp.height.toFloat() / totalRows
                     val srcL   = (def.col * scaleX).toInt().coerceAtLeast(0)
                     val srcT   = (def.row * scaleY).toInt().coerceAtLeast(0)
-                    val srcW   = scaleX.toInt().coerceAtLeast(1).coerceAtMost(bitmap.width  - srcL)
-                    val srcH   = scaleY.toInt().coerceAtLeast(1).coerceAtMost(bitmap.height - srcT)
+                    val srcW   = scaleX.toInt().coerceAtLeast(1).coerceAtMost(bmp.width  - srcL)
+                    val srcH   = scaleY.toInt().coerceAtLeast(1).coerceAtMost(bmp.height - srcT)
                     drawImage(
-                        image     = bitmap,
+                        image     = bmp,
                         srcOffset = IntOffset(srcL, srcT),
                         srcSize   = IntSize(srcW, srcH),
                         dstOffset = IntOffset.Zero,
