@@ -17,6 +17,7 @@ export class OverlayManager {
   private callbacks!: OverlayCallbacks;
   private ipcBound  = false;
   private dragTimer: ReturnType<typeof setInterval> | null = null;
+  private isCompact = false;
 
   init(callbacks: OverlayCallbacks): void {
     this.callbacks = callbacks;
@@ -110,8 +111,14 @@ export class OverlayManager {
 
     ipcMain.on('overlay-drag-end', () => this.stopDrag());
 
-    ipcMain.on('overlay-hide',          () => this.win?.hide());
-    ipcMain.on('overlay-minimize',      () => this.win?.hide());
+    ipcMain.on('overlay-hide', () => this.win?.hide());
+
+    ipcMain.on('overlay-minimize', () => {
+      if (!this.win || this.win.isDestroyed()) return;
+      this.isCompact = !this.isCompact;
+      this.win.setSize(300, this.isCompact ? 32 : 240);
+      this.win.webContents.send('overlay-compact', this.isCompact);
+    });
     ipcMain.on('overlay-exit',          () => this.callbacks.onExit());
     ipcMain.on('overlay-open-settings', () => this.callbacks.onSettings());
     ipcMain.on('overlay-toggle-speak',  () => this.callbacks.onToggleSpeak());

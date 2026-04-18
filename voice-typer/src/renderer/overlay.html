@@ -177,6 +177,12 @@
   .copy-btn.visible      { display: inline-block; }
   .copy-btn:hover        { border-color: #89b4fa; color: #89b4fa; }
   .copy-btn.copied       { border-color: #a6e3a1; color: #a6e3a1; }
+
+  /* ─── Compact-Modus (nur Titelleiste) ─────────────────── */
+  body.compact .record-area,
+  body.compact .mode-row,
+  body.compact .last-text-row,
+  body.compact .last-text-area { display: none; }
 </style>
 </head>
 <body>
@@ -185,7 +191,7 @@
 <div class="title-bar">
   <span class="name">🎤 VOICE TYPER</span>
   <div class="controls">
-    <button class="ctrl-btn" id="minBtn" title="Minimieren" onclick="minimizeOverlay()">─</button>
+    <button class="ctrl-btn" id="minBtn" title="Kompakt / Vollbild" onclick="minimizeOverlay()">─</button>
     <button class="ctrl-btn" title="Einstellungen" onclick="openSettings()">⚙</button>
     <button class="ctrl-btn close-btn" title="Ausblenden" onclick="hideOverlay()">×</button>
     <button class="ctrl-btn exit-btn" title="Beenden" onclick="exitApp()">END</button>
@@ -242,6 +248,12 @@ const STATE_CONFIG = {
   recording:  { label: 'AUFNAHME …',    icon: '⏹',  hint: 'Erneut klicken zum Stoppen' },
   processing: { label: 'VERARBEITUNG …',icon: '⏳', hint: 'Bitte warten …' },
 };
+
+// ─── Compact-Modus ──────────────────────────────────────────────────────────
+ipcRenderer.on('overlay-compact', (_e, compact) => {
+  document.body.classList.toggle('compact', compact);
+  document.getElementById('minBtn').textContent = compact ? '⬜' : '─';
+});
 
 // ─── Speak-State-Updates ────────────────────────────────────────────────────
 ipcRenderer.on('update-speak-state', (_e, speaking) => {
