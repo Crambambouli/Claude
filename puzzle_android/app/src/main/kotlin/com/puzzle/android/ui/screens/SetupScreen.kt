@@ -22,6 +22,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
@@ -34,10 +35,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.puzzle.android.R
 import com.puzzle.android.data.model.PuzzleCategory
 import com.puzzle.android.data.model.PuzzleStyle
 import com.puzzle.android.viewmodel.PuzzleViewModel
@@ -62,7 +65,20 @@ fun SetupScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title   = { Text("Puzzle Rose", style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    androidx.compose.foundation.layout.Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            painter            = painterResource(R.drawable.ic_rose),
+                            contentDescription = null,
+                            tint               = androidx.compose.ui.graphics.Color.Unspecified,
+                            modifier           = Modifier.size(28.dp)
+                        )
+                        Text("Puzzle Rose", style = MaterialTheme.typography.titleLarge)
+                    }
+                },
                 colors  = TopAppBarDefaults.topAppBarColors(
                     containerColor    = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer

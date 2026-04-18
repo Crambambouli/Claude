@@ -34,6 +34,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.UnfoldLess
 import androidx.compose.material3.Button
@@ -78,6 +80,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -87,6 +90,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.puzzle.android.R
 import com.puzzle.android.game.EdgeType
 import com.puzzle.android.game.JigsawPiece
 import com.puzzle.android.game.JigsawShapeGenerator
@@ -108,7 +112,20 @@ fun PuzzleScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Puzzle", style = MaterialTheme.typography.titleLarge) },
+                title = {
+                    Row(
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            painter            = painterResource(R.drawable.ic_rose),
+                            contentDescription = null,
+                            tint               = Color.Unspecified,
+                            modifier           = Modifier.size(26.dp)
+                        )
+                        Text("Puzzle", style = MaterialTheme.typography.titleLarge)
+                    }
+                },
                 navigationIcon = {
                     IconButton(onClick = { vm.backToSetup(); navController.popBackStack() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Zurück")
@@ -135,6 +152,7 @@ fun PuzzleScreen(
         val state = jigsaw
         var isMinimized     by remember { mutableStateOf(false) }
         var showPreviewFull by remember { mutableStateOf(false) }
+        var trayExpanded    by remember { mutableStateOf(false) }
 
         if (state == null || definitions.isEmpty()) {
             Box(Modifier.fillMaxSize().padding(padding), contentAlignment = Alignment.Center) {
@@ -164,7 +182,7 @@ fun PuzzleScreen(
                 }
 
                 // ── Main play area ───────────────────────────────────────────
-                if (!isMinimized) {
+                if (!isMinimized && !trayExpanded) {
                     Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
 
                         // boardScale / boardOffset live here so piece-drag lambdas capture them
@@ -419,39 +437,66 @@ fun PuzzleScreen(
 
                 // ── Tray ────────────────────────────────────────────────────
                 val trayPieces = remember(state.pieces) { state.pieces.filter { it.isInTray } }
+                val trayMinSize = if (trayExpanded) 88.dp else 56.dp
 
-                Box(
+                Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(72.dp)
+                        .then(
+                            if (trayExpanded) Modifier.weight(1f)
+                            else Modifier.height(88.dp)
+                        )
                         .background(Color(0xFFF0F0F8))
                 ) {
-                    if (trayPieces.isEmpty()) {
-                        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                            Text(
-                                text      = "Alle Teile auf dem Feld",
-                                style     = MaterialTheme.typography.labelSmall,
-                                textAlign = TextAlign.Center,
-                                color     = MaterialTheme.colorScheme.onSurfaceVariant
+                    Row(
+                        modifier              = Modifier.fillMaxWidth().padding(horizontal = 6.dp),
+                        verticalAlignment     = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text  = "Ablage (${trayPieces.size})",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        IconButton(
+                            onClick  = { trayExpanded = !trayExpanded },
+                            modifier = Modifier.size(28.dp)
+                        ) {
+                            Icon(
+                                imageVector        = if (trayExpanded) Icons.Default.ExpandMore else Icons.Default.ExpandLess,
+                                contentDescription = if (trayExpanded) "Ablage einklappen" else "Ablage ausklappen",
+                                tint               = MaterialTheme.colorScheme.primary
                             )
                         }
-                    } else {
-                        LazyVerticalGrid(
-                            columns               = GridCells.Adaptive(minSize = 56.dp),
-                            modifier              = Modifier.fillMaxSize(),
-                            contentPadding        = PaddingValues(2.dp),
-                            horizontalArrangement = Arrangement.spacedBy(2.dp),
-                            verticalArrangement   = Arrangement.spacedBy(2.dp)
-                        ) {
-                            items(trayPieces, key = { it.id }) { piece ->
-                                PieceThumbnail(
-                                    piece     = piece,
-                                    def       = piece.definition,
-                                    bitmap    = bitmap,
-                                    totalRows = state.rows,
-                                    totalCols = state.cols,
-                                    onClick   = { vm.movePieceToBoard(piece.id) }
+                    }
+                    Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                        if (trayPieces.isEmpty()) {
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                Text(
+                                    text      = "Alle Teile auf dem Feld",
+                                    style     = MaterialTheme.typography.labelSmall,
+                                    textAlign = TextAlign.Center,
+                                    color     = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
+                            }
+                        } else {
+                            LazyVerticalGrid(
+                                columns               = GridCells.Adaptive(minSize = trayMinSize),
+                                modifier              = Modifier.fillMaxSize(),
+                                contentPadding        = PaddingValues(2.dp),
+                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                verticalArrangement   = Arrangement.spacedBy(2.dp)
+                            ) {
+                                items(trayPieces, key = { it.id }) { piece ->
+                                    PieceThumbnail(
+                                        piece     = piece,
+                                        def       = piece.definition,
+                                        bitmap    = bitmap,
+                                        totalRows = state.rows,
+                                        totalCols = state.cols,
+                                        onClick   = { vm.movePieceToBoard(piece.id) }
+                                    )
+                                }
                             }
                         }
                     }
