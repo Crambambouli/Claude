@@ -1,5 +1,8 @@
 package com.puzzle.android.ui.screens
 
+import android.app.Activity
+import android.content.pm.ActivityInfo
+import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -31,6 +34,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ScreenRotation
 import androidx.compose.material.icons.filled.UnfoldLess
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -71,6 +75,8 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -121,6 +127,7 @@ fun PuzzleScreen(
                             modifier = Modifier.padding(end = 8.dp)
                         )
                     }
+                    OrientationToggleButton()
                 }
             )
         }
@@ -508,6 +515,32 @@ fun PuzzleScreen(
                 }
             }
         }
+    }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Orientation toggle (landscape ↔ portrait)
+// ─────────────────────────────────────────────────────────────────────────────
+
+@Composable
+fun OrientationToggleButton() {
+    val context = LocalContext.current
+    val config  = LocalConfiguration.current
+    IconButton(onClick = {
+        val activity = context as? Activity
+        if (activity != null) {
+            activity.requestedOrientation =
+                if (config.orientation == Configuration.ORIENTATION_PORTRAIT)
+                    ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
+                else
+                    ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
+        }
+    }) {
+        Icon(
+            imageVector        = Icons.Default.ScreenRotation,
+            contentDescription = "Drehen",
+            tint               = MaterialTheme.colorScheme.onPrimaryContainer
+        )
     }
 }
 

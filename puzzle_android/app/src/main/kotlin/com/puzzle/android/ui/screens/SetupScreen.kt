@@ -62,11 +62,12 @@ fun SetupScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Puzzle Rose", style = MaterialTheme.typography.titleLarge) },
-                colors = TopAppBarDefaults.topAppBarColors(
+                title   = { Text("Puzzle Rose", style = MaterialTheme.typography.titleLarge) },
+                colors  = TopAppBarDefaults.topAppBarColors(
                     containerColor    = MaterialTheme.colorScheme.primaryContainer,
                     titleContentColor = MaterialTheme.colorScheme.onPrimaryContainer
-                )
+                ),
+                actions = { OrientationToggleButton() }
             )
         }
     ) { padding ->
