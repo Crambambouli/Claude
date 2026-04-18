@@ -181,16 +181,17 @@ data class JigsawState(
             val trayLeft  = BOARD_FRACTION + 0.02f
             val trayRight = 0.98f
             val trayW     = trayRight - trayLeft
-            val pieces = definitions.mapIndexed { idx, def ->
+            val shuffled  = definitions.shuffled(rng)
+            val pieces = shuffled.mapIndexed { idx, def ->
                 val col2     = idx % 2
                 val row2     = idx / 2
-                val trayRows = (definitions.size + 1) / 2
+                val trayRows = (shuffled.size + 1) / 2
                 val baseX    = trayLeft + trayW * (col2.toFloat() + 0.5f) / 2f
                 val baseY    = (row2.toFloat() + 0.5f) / trayRows.toFloat()
                 val jitterX  = (rng.nextFloat() - 0.5f) * trayW * 0.3f
                 val jitterY  = (rng.nextFloat() - 0.5f) * (1f / trayRows.toFloat()) * 0.4f
                 JigsawPiece(
-                    id         = idx,
+                    id         = def.row * cols + def.col,
                     definition = def,
                     x          = (baseX + jitterX).coerceIn(trayLeft, trayRight),
                     y          = (baseY + jitterY).coerceIn(0.01f, 0.99f)
