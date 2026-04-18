@@ -3,6 +3,7 @@ package com.puzzle.android.data.image
 import android.content.res.AssetManager
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.util.Log
 import com.puzzle.android.BuildConfig
 import com.puzzle.android.data.model.PuzzleCategory
 import com.puzzle.android.data.model.PuzzleStyle
@@ -40,7 +41,7 @@ object ImageGenerator {
         val token = BuildConfig.HF_API_TOKEN
         if (token.isBlank()) return null
         val escaped  = prompt.replace("\\", "\\\\").replace("\"", "\\\"")
-        val bodyStr  = """{"inputs":"$escaped","parameters":{"width":512,"height":512}}"""
+        val bodyStr  = """{"inputs":"$escaped"}"""
         for (attempt in 0 until 3) {
             try {
                 var retryMs = 0L
@@ -64,11 +65,20 @@ object ImageGenerator {
                                 } catch (_: Exception) { 20_000L }
                                 null
                             }
-                            else -> null
+                            response.code == 401 || response.code == 403 -> {
+                                Log.w("ImageGen", "HF auth error ${response.code}")
+                                retryMs = -1L
+                                null
+                            }
+                            else -> {
+                                Log.w("ImageGen", "HF error ${response.code}: ${response.body?.string()?.take(200)}")
+                                null
+                            }
                         }
                     }
                 }
                 if (bmp != null) return bmp
+                if (retryMs == -1L) return null  // auth failure, no retry
                 if (retryMs > 0) delay(retryMs) else if (attempt < 2) delay(3_000)
             } catch (_: Exception) {
                 if (attempt < 2) delay(3_000)
