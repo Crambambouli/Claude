@@ -7,11 +7,13 @@ import com.puzzle.android.BuildConfig
 import com.puzzle.android.data.model.PuzzleCategory
 import com.puzzle.android.data.model.PuzzleStyle
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import org.json.JSONObject
 import java.net.URLEncoder
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
@@ -37,23 +39,42 @@ object ImageGenerator {
     suspend fun downloadFromHuggingFace(prompt: String): Bitmap? {
         val token = BuildConfig.HF_API_TOKEN
         if (token.isBlank()) return null
-        return withContext(Dispatchers.IO) {
+        val escaped  = prompt.replace("\\", "\\\\").replace("\"", "\\\"")
+        val bodyStr  = """{"inputs":"$escaped","parameters":{"width":512,"height":512}}"""
+        for (attempt in 0 until 3) {
             try {
-                val escaped = prompt.replace("\\", "\\\\").replace("\"", "\\\"")
-                val body = """{"inputs":"$escaped"}"""
-                    .toRequestBody("application/json".toMediaType())
-                val request = Request.Builder()
-                    .url("https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell")
-                    .header("Authorization", "Bearer $token")
-                    .post(body)
-                    .build()
-                client.newCall(request).execute().use { response ->
-                    if (!response.isSuccessful) return@withContext null
-                    val bytes = response.body?.bytes() ?: return@withContext null
-                    BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+                var retryMs = 0L
+                val bmp = withContext(Dispatchers.IO) {
+                    val body    = bodyStr.toRequestBody("application/json".toMediaType())
+                    val request = Request.Builder()
+                        .url("https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell")
+                        .header("Authorization", "Bearer $token")
+                        .post(body)
+                        .build()
+                    client.newCall(request).execute().use { response ->
+                        when {
+                            response.isSuccessful ->
+                                response.body?.bytes()
+                                    ?.let { BitmapFactory.decodeByteArray(it, 0, it.size) }
+                            response.code == 503 -> {
+                                retryMs = try {
+                                    val json = JSONObject(response.body?.string() ?: "{}")
+                                    (json.optDouble("estimated_time", 20.0) * 1000)
+                                        .toLong().coerceIn(5_000, 30_000)
+                                } catch (_: Exception) { 20_000L }
+                                null
+                            }
+                            else -> null
+                        }
+                    }
                 }
-            } catch (_: Exception) { null }
+                if (bmp != null) return bmp
+                if (retryMs > 0) delay(retryMs) else if (attempt < 2) delay(3_000)
+            } catch (_: Exception) {
+                if (attempt < 2) delay(3_000)
+            }
         }
+        return null
     }
 
     suspend fun downloadFromPicsum(): Bitmap? = withContext(Dispatchers.IO) {
