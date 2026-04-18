@@ -341,9 +341,8 @@ function toggleSpeak() {
   titleBar.addEventListener('mousedown', e => {
     if (e.target.closest('.controls')) return;
     dragging = true;
-    // screenX/Y sind in Chromium logical pixels – passt zu win.setPosition()
-    anchorX = e.screenX - e.clientX;   // = Fenster-Left in screen-coords
-    anchorY = e.screenY - e.clientY;   // = Fenster-Top  in screen-coords
+    anchorX = e.clientX;   // Greifpunkt X relativ zur Fenster-linken-Kante
+    anchorY = e.clientY;   // Greifpunkt Y relativ zur Fenster-oberen-Kante
   });
 
   document.addEventListener('mousemove', e => {
