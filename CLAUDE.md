@@ -148,3 +148,26 @@ Log-Pfad (Windows): `%APPDATA%\Blitztext\voice-typer.log` (Fallback: `%TEMP%\bli
 - Entwicklungs-Branch: `claude/<feature-name>` (vom Harness vorgegeben)
 - Nach jedem Push immer einen Draft-PR erstellen falls noch keiner existiert
 - Commit-Messages auf Deutsch oder Englisch, präzise (Ursache + Lösung)
+
+---
+
+## Deploy (Installer → V-Server)
+
+Installer wird auf Windows gebaut (`npm run package`), dann per SCP hochgeladen.
+
+| Parameter | Wert |
+|-----------|------|
+| Host | `46.225.83.170` |
+| User | `deployer` |
+| SSH-Key | `C:/Nofak/.ssh/id_ed25519_ws` |
+| Zielpfad | `/var/www/downloads/` |
+
+**PowerShell-Befehl (aus `voice-typer/`):**
+```powershell
+scp -i C:/Nofak/.ssh/id_ed25519_ws "installer\Blitztext Setup 1.0.0.exe" deployer@46.225.83.170:/var/www/downloads/
+```
+
+**Kompletter Ablauf:**
+```powershell
+cd C:\Users\Christian\voice-typer-repo\voice-typer; git pull origin main; npm run package; scp -i C:/Nofak/.ssh/id_ed25519_ws "installer\Blitztext Setup 1.0.0.exe" deployer@46.225.83.170:/var/www/downloads/
+```
