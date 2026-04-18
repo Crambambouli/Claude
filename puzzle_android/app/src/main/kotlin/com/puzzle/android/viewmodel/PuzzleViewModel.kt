@@ -78,16 +78,14 @@ class PuzzleViewModel(application: Application) : AndroidViewModel(application) 
             try {
                 val (rows, cols) = pieceCountToGrid(_pieceCount.value)
 
+                val prompt = ImageGenerator.buildPrompt(_category.value, _style.value)
                 val bmp = withContext(Dispatchers.IO) {
                     ImageGenerator.loadFromAssets(getApplication<Application>().assets)
-                } ?: withContext(Dispatchers.IO) {
-                    try {
-                        val url = ImageGenerator.buildUrl(_category.value, _style.value)
-                        ImageGenerator.download(url)
-                    } catch (_: Exception) { null }
-                } ?: withContext(Dispatchers.IO) {
-                    TestImageGenerator.create(cols, rows)
-                }
+                } ?: ImageGenerator.downloadFromHuggingFace(prompt)
+                  ?: ImageGenerator.downloadFromPicsum()
+                  ?: withContext(Dispatchers.IO) {
+                      TestImageGenerator.create(cols, rows)
+                  }
 
                 rawBitmap     = bmp
                 _bitmap.value = bmp.asImageBitmap()
