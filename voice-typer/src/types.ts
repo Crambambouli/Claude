@@ -18,6 +18,8 @@ export interface Settings {
   audioDevice: string;
   /** TTS-Aussprache-Ersetzungen: englischer Begriff → phonetisches Deutsch */
   ttsReplacements: Record<string, string>;
+  /** Name der SAPI-Stimme (leer = Systemstandard) */
+  ttsVoice: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -27,6 +29,7 @@ export const DEFAULT_SETTINGS: Settings = {
   apiKey:          '',
   hotkey:          'Ctrl+F8',
   audioDevice:     '',
+  ttsVoice:        '',
   ttsReplacements: {
     Layer:    'Lejer',
     Layers:   'Lejerz',

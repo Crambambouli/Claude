@@ -27,6 +27,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   checkWhisper: (whisperPath: string): Promise<{ ok: boolean; message: string }> =>
     ipcRenderer.invoke('check-whisper', whisperPath),
 
+  /** Gibt verfügbare SAPI-TTS-Stimmen zurück. */
+  getTtsVoices: (): Promise<string[]> =>
+    ipcRenderer.invoke('get-tts-voices'),
+
   /** Öffnet Log-Datei im System-Editor. */
   openLogFile: (): void =>
     ipcRenderer.send('open-log-file'),

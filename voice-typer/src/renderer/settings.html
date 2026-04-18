@@ -213,9 +213,15 @@
   </div>
 </div>
 
-<!-- TTS Aussprache -->
+<!-- TTS Stimme & Aussprache -->
 <div class="section">
-  <div class="section-title">TTS Aussprache-Wörterliste</div>
+  <div class="section-title">TTS Stimme &amp; Aussprache</div>
+  <div class="field">
+    <label for="ttsVoice">Stimme</label>
+    <select id="ttsVoice">
+      <option value="">Standard (Systemstimme)</option>
+    </select>
+  </div>
   <div id="replacementsList"></div>
   <button class="add-btn" onclick="addReplacement()">+ Eintrag hinzufügen</button>
   <div class="hint" style="margin-top:6px">Begriff (links) wird beim Vorlesen durch Aussprache (rechts) ersetzt.</div>
@@ -239,6 +245,7 @@
     document.getElementById('apiKey').value          = s.apiKey          ?? '';
     document.getElementById('hotkey').value          = s.hotkey          ?? 'Ctrl+F8';
     document.getElementById('audioDevice').value     = s.audioDevice     ?? '';
+    document.getElementById('ttsVoice').value        = s.ttsVoice        ?? '';
     buildReplacementRows(s.ttsReplacements ?? {});
   });
 
@@ -280,6 +287,17 @@
     return result;
   }
 
+  // TTS-Stimmen laden
+  api.getTtsVoices().then((voices) => {
+    const sel = document.getElementById('ttsVoice');
+    for (const v of voices) {
+      const opt = document.createElement('option');
+      opt.value = v;
+      opt.textContent = v;
+      sel.appendChild(opt);
+    }
+  });
+
   // Geräte laden
   api.getAudioDevices().then((devices) => {
     const sel = document.getElementById('audioDevice');
@@ -309,6 +327,7 @@
       apiKey:           document.getElementById('apiKey').value.trim(),
       hotkey:           document.getElementById('hotkey').value.trim() || 'Ctrl+F8',
       audioDevice:      document.getElementById('audioDevice').value,
+      ttsVoice:         document.getElementById('ttsVoice').value,
       ttsReplacements:  collectReplacements(),
     });
     window.close();
