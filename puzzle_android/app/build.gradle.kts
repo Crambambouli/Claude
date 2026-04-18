@@ -9,7 +9,7 @@ android {
 
     defaultConfig {
         applicationId = "com.puzzle.android"
-        minSdk = 31
+        minSdk = 21
         targetSdk = 34
         versionCode = 1
         versionName = "0.1.0"
