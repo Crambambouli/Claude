@@ -16,7 +16,6 @@ export class OverlayManager {
   private win:       BrowserWindow | null = null;
   private callbacks!: OverlayCallbacks;
   private ipcBound  = false;
-  private dragTimer: ReturnType<typeof setInterval> | null = null;
   private isCompact = false;
 
   init(callbacks: OverlayCallbacks): void {
@@ -73,13 +72,8 @@ export class OverlayManager {
   }
 
   destroy(): void {
-    this.stopDrag();
     this.win?.destroy();
     this.win = null;
-  }
-
-  private stopDrag(): void {
-    if (this.dragTimer) { clearInterval(this.dragTimer); this.dragTimer = null; }
   }
 
   private bindIPC(): void {
@@ -95,25 +89,14 @@ export class OverlayManager {
       this.callbacks.onToggleRecording();
     });
 
-    ipcMain.on('overlay-drag-start', () => {
+    ipcMain.on('overlay-drag-move', (_e, x: number, y: number) => {
       if (!this.win || this.win.isDestroyed()) return;
-      this.stopDrag();
-      const [wx, wy] = this.win.getPosition();
-      const cur      = screen.getCursorScreenPoint();
-      const anchorX  = cur.x - wx;
-      const anchorY  = cur.y - wy;
-      this.dragTimer = setInterval(() => {
-        if (!this.win || this.win.isDestroyed()) { this.stopDrag(); return; }
-        const c  = screen.getCursorScreenPoint();
-        const wa = screen.getPrimaryDisplay().workArea;
-        const h  = this.isCompact ? 32 : 240;
-        const nx = Math.max(wa.x, Math.min(c.x - anchorX, wa.x + wa.width  - 300));
-        const ny = Math.max(wa.y, Math.min(c.y - anchorY, wa.y + wa.height - h));
-        this.win.setPosition(nx, ny);
-      }, 16);
+      const wa = screen.getPrimaryDisplay().workArea;
+      const h  = this.isCompact ? 32 : 240;
+      const nx = Math.max(wa.x, Math.min(x, wa.x + wa.width  - 300));
+      const ny = Math.max(wa.y, Math.min(y, wa.y + wa.height - h));
+      this.win.setPosition(nx, ny);
     });
-
-    ipcMain.on('overlay-drag-end', () => this.stopDrag());
 
     ipcMain.on('overlay-hide', () => this.win?.hide());
 

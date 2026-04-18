@@ -332,16 +332,29 @@ function toggleSpeak() {
   ipcRenderer.send('overlay-toggle-speak');
 }
 
-// ─── Manuelles Dragging (Cursor-Tracking im Main-Prozess, DPI-sicher) ────────
+// ─── Manuelles Dragging via mousemove (kein setInterval → kein IPC-Stau) ─────
 (function () {
   const titleBar = document.querySelector('.title-bar');
+  let dragging = false;
+  let anchorX = 0, anchorY = 0;   // Cursor-Offset relativ zur Fenster-Ecke
 
   titleBar.addEventListener('mousedown', e => {
     if (e.target.closest('.controls')) return;
-    ipcRenderer.send('overlay-drag-start');
+    dragging = true;
+    // screenX/Y sind in Chromium logical pixels – passt zu win.setPosition()
+    anchorX = e.screenX - e.clientX;   // = Fenster-Left in screen-coords
+    anchorY = e.screenY - e.clientY;   // = Fenster-Top  in screen-coords
   });
 
-  document.addEventListener('mouseup', () => ipcRenderer.send('overlay-drag-end'));
+  document.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    ipcRenderer.send('overlay-drag-move',
+      e.screenX - anchorX,   // neue Fenster-Left
+      e.screenY - anchorY,   // neue Fenster-Top
+    );
+  });
+
+  document.addEventListener('mouseup', () => { dragging = false; });
 })();
 </script>
 </body>
