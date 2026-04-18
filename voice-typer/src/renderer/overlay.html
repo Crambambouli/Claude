@@ -24,7 +24,6 @@
     padding: 6px 10px;
     background: #1e1e2e;
     border-bottom: 1px solid #313244;
-    -webkit-app-region: drag;
     cursor: move;
   }
   .title-bar .name {
@@ -33,10 +32,10 @@
     letter-spacing: 0.05em;
     color: #89b4fa;
   }
-  .title-bar .controls { display: flex; gap: 4px; -webkit-app-region: no-drag; }
+  .title-bar .controls { display: flex; gap: 4px; }
   .title-bar .ctrl-btn {
     background: none; border: none;
-    color: #585b70; font-size: 14px; cursor: pointer;
+    color: #ffffff; font-size: 14px; cursor: pointer;
     line-height: 1; padding: 0 3px; transition: color .15s;
   }
   .title-bar .ctrl-btn:hover { color: #cdd6f4; }
@@ -60,7 +59,6 @@
   }
 
   .record-btn, .speak-btn {
-    -webkit-app-region: no-drag;
     width: 72px; height: 72px;
     border-radius: 50%;
     border: 3px solid #45475a;
@@ -125,7 +123,6 @@
     justify-content: center;
   }
   .mode-btn {
-    -webkit-app-region: no-drag;
     flex: 1;
     padding: 5px 0;
     border-radius: 6px;
@@ -167,7 +164,6 @@
     color: #45475a;
   }
   .copy-btn {
-    -webkit-app-region: no-drag;
     background: none;
     border: 1px solid #313244;
     border-radius: 4px;
@@ -181,6 +177,12 @@
   .copy-btn.visible      { display: inline-block; }
   .copy-btn:hover        { border-color: #89b4fa; color: #89b4fa; }
   .copy-btn.copied       { border-color: #a6e3a1; color: #a6e3a1; }
+
+  /* ─── Compact-Modus (nur Titelleiste) ─────────────────── */
+  body.compact .record-area,
+  body.compact .mode-row,
+  body.compact .last-text-row,
+  body.compact .last-text-area { display: none; }
 </style>
 </head>
 <body>
@@ -189,7 +191,7 @@
 <div class="title-bar">
   <span class="name">🎤 VOICE TYPER</span>
   <div class="controls">
-    <button class="ctrl-btn" id="minBtn" title="Minimieren" onclick="minimizeOverlay()">─</button>
+    <button class="ctrl-btn" id="minBtn" title="Kompakt / Vollbild" onclick="minimizeOverlay()">─</button>
     <button class="ctrl-btn" title="Einstellungen" onclick="openSettings()">⚙</button>
     <button class="ctrl-btn close-btn" title="Ausblenden" onclick="hideOverlay()">×</button>
     <button class="ctrl-btn exit-btn" title="Beenden" onclick="exitApp()">END</button>
@@ -246,6 +248,12 @@ const STATE_CONFIG = {
   recording:  { label: 'AUFNAHME …',    icon: '⏹',  hint: 'Erneut klicken zum Stoppen' },
   processing: { label: 'VERARBEITUNG …',icon: '⏳', hint: 'Bitte warten …' },
 };
+
+// ─── Compact-Modus ──────────────────────────────────────────────────────────
+ipcRenderer.on('overlay-compact', (_e, compact) => {
+  document.body.classList.toggle('compact', compact);
+  document.getElementById('minBtn').textContent = compact ? '⬜' : '─';
+});
 
 // ─── Speak-State-Updates ────────────────────────────────────────────────────
 ipcRenderer.on('update-speak-state', (_e, speaking) => {
@@ -323,6 +331,18 @@ function openSettings() {
 function toggleSpeak() {
   ipcRenderer.send('overlay-toggle-speak');
 }
+
+// ─── Manuelles Dragging (Cursor-Tracking im Main-Prozess, DPI-sicher) ────────
+(function () {
+  const titleBar = document.querySelector('.title-bar');
+
+  titleBar.addEventListener('mousedown', e => {
+    if (e.target.closest('.controls')) return;
+    ipcRenderer.send('overlay-drag-start');
+  });
+
+  document.addEventListener('mouseup', () => ipcRenderer.send('overlay-drag-end'));
+})();
 </script>
 </body>
 </html>
