@@ -341,9 +341,7 @@ function toggleSpeak() {
     ipcRenderer.send('overlay-drag-start');
   });
 
-  // mouseup + mouseleave als Sicherheitsnetz falls mouseup außerhalb des Fensters
-  document.addEventListener('mouseup',    () => ipcRenderer.send('overlay-drag-end'));
-  document.addEventListener('mouseleave', () => ipcRenderer.send('overlay-drag-end'));
+  document.addEventListener('mouseup', () => ipcRenderer.send('overlay-drag-end'));
 })();
 </script>
 </body>
