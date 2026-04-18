@@ -104,8 +104,12 @@ export class OverlayManager {
       const anchorY  = cur.y - wy;
       this.dragTimer = setInterval(() => {
         if (!this.win || this.win.isDestroyed()) { this.stopDrag(); return; }
-        const c = screen.getCursorScreenPoint();
-        this.win.setPosition(c.x - anchorX, c.y - anchorY);
+        const c  = screen.getCursorScreenPoint();
+        const wa = screen.getPrimaryDisplay().workArea;
+        const h  = this.isCompact ? 32 : 240;
+        const nx = Math.max(wa.x, Math.min(c.x - anchorX, wa.x + wa.width  - 300));
+        const ny = Math.max(wa.y, Math.min(c.y - anchorY, wa.y + wa.height - h));
+        this.win.setPosition(nx, ny);
       }, 16);
     });
 
