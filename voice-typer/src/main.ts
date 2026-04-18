@@ -66,6 +66,7 @@ class VoiceTyper {
     this.clipboard = new ClipboardManager();
     this.tts       = new TtsManager();
     this.tts.setReplacements(s.ttsReplacements ?? {});
+    this.tts.setVoice(s.ttsVoice ?? '');
 
     this.tray = new TrayManager();
     this.tray.init({
@@ -120,10 +121,14 @@ class VoiceTyper {
       if (partial.ttsReplacements !== undefined) {
         this.tts.setReplacements(next.ttsReplacements);
       }
+      if (partial.ttsVoice !== undefined) {
+        this.tts.setVoice(next.ttsVoice);
+      }
       logger.info('Settings vom Settings-Fenster übernommen.');
     });
 
     ipcMain.handle('get-audio-devices', () => this.recorder.getDevices());
+    ipcMain.handle('get-tts-voices',   () => this.tts.getVoices());
 
     ipcMain.handle('check-whisper', (_e, whisperPath: string) => {
       const tmp = new WhisperService(whisperPath);
