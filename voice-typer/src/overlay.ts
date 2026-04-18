@@ -16,6 +16,7 @@ export class OverlayManager {
   private win:       BrowserWindow | null = null;
   private callbacks!: OverlayCallbacks;
   private ipcBound  = false;
+  private dragTimer: ReturnType<typeof setInterval> | null = null;
 
   init(callbacks: OverlayCallbacks): void {
     this.callbacks = callbacks;
@@ -71,8 +72,13 @@ export class OverlayManager {
   }
 
   destroy(): void {
+    this.stopDrag();
     this.win?.destroy();
     this.win = null;
+  }
+
+  private stopDrag(): void {
+    if (this.dragTimer) { clearInterval(this.dragTimer); this.dragTimer = null; }
   }
 
   private bindIPC(): void {
@@ -88,14 +94,24 @@ export class OverlayManager {
       this.callbacks.onToggleRecording();
     });
 
-    ipcMain.on('overlay-drag', (_e, dx: number, dy: number) => {
+    ipcMain.on('overlay-drag-start', () => {
       if (!this.win || this.win.isDestroyed()) return;
-      const [x, y] = this.win.getPosition();
-      this.win.setPosition(x + dx, y + dy);
+      this.stopDrag();
+      const [wx, wy] = this.win.getPosition();
+      const cur      = screen.getCursorScreenPoint();
+      const anchorX  = cur.x - wx;
+      const anchorY  = cur.y - wy;
+      this.dragTimer = setInterval(() => {
+        if (!this.win || this.win.isDestroyed()) { this.stopDrag(); return; }
+        const c = screen.getCursorScreenPoint();
+        this.win.setPosition(c.x - anchorX, c.y - anchorY);
+      }, 16);
     });
 
+    ipcMain.on('overlay-drag-end', () => this.stopDrag());
+
     ipcMain.on('overlay-hide',          () => this.win?.hide());
-    ipcMain.on('overlay-minimize',      () => this.win?.minimize());
+    ipcMain.on('overlay-minimize',      () => this.win?.hide());
     ipcMain.on('overlay-exit',          () => this.callbacks.onExit());
     ipcMain.on('overlay-open-settings', () => this.callbacks.onSettings());
     ipcMain.on('overlay-toggle-speak',  () => this.callbacks.onToggleSpeak());

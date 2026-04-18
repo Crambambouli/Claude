@@ -320,28 +320,18 @@ function toggleSpeak() {
   ipcRenderer.send('overlay-toggle-speak');
 }
 
-// ─── Manuelles Dragging (focusable:false blockiert -webkit-app-region) ───────
+// ─── Manuelles Dragging (Cursor-Tracking im Main-Prozess, DPI-sicher) ────────
 (function () {
   const titleBar = document.querySelector('.title-bar');
-  let dragging = false, lastX = 0, lastY = 0;
 
   titleBar.addEventListener('mousedown', e => {
     if (e.target.closest('.controls')) return;
-    dragging = true;
-    lastX = e.screenX;
-    lastY = e.screenY;
+    ipcRenderer.send('overlay-drag-start');
   });
 
-  document.addEventListener('mousemove', e => {
-    if (!dragging) return;
-    const dx = e.screenX - lastX;
-    const dy = e.screenY - lastY;
-    lastX = e.screenX;
-    lastY = e.screenY;
-    ipcRenderer.send('overlay-drag', dx, dy);
-  });
-
-  document.addEventListener('mouseup', () => { dragging = false; });
+  // mouseup + mouseleave als Sicherheitsnetz falls mouseup außerhalb des Fensters
+  document.addEventListener('mouseup',    () => ipcRenderer.send('overlay-drag-end'));
+  document.addEventListener('mouseleave', () => ipcRenderer.send('overlay-drag-end'));
 })();
 </script>
 </body>
