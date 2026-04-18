@@ -120,7 +120,9 @@ export class OverlayManager {
     ipcMain.on('overlay-minimize', () => {
       if (!this.win || this.win.isDestroyed()) return;
       this.isCompact = !this.isCompact;
+      this.win.setResizable(true);
       this.win.setSize(300, this.isCompact ? 32 : 240);
+      this.win.setResizable(false);
       this.win.webContents.send('overlay-compact', this.isCompact);
     });
     ipcMain.on('overlay-exit',          () => this.callbacks.onExit());
