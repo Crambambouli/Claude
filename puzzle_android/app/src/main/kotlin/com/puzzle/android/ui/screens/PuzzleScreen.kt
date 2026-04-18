@@ -671,23 +671,30 @@ private fun PieceThumbnail(
             .clickable(onClick = onClick)
     ) {
         Canvas(modifier = Modifier.fillMaxSize()) {
-            val w    = size.width
-            val h    = size.height
-            val path = JigsawShapeGenerator.createPiecePath(def, w, h)
+            val w     = size.width
+            val h     = size.height
+            val padX  = w * 0.22f
+            val padY  = h * 0.22f
+            val cellW = w - 2f * padX
+            val cellH = h - 2f * padY
+            val base  = JigsawShapeGenerator.createPiecePath(def, cellW, cellH)
+            val path  = Path().apply { addPath(base, Offset(padX, padY)) }
 
             clipPath(path) {
                 val bmp = bitmap
                 if (bmp != null) {
-                    val scaleX = bmp.width.toFloat()  / totalCols
-                    val scaleY = bmp.height.toFloat() / totalRows
-                    val srcL   = (def.col * scaleX).toInt().coerceAtLeast(0)
-                    val srcT   = (def.row * scaleY).toInt().coerceAtLeast(0)
-                    val srcW   = scaleX.toInt().coerceAtLeast(1).coerceAtMost(bmp.width  - srcL)
-                    val srcH   = scaleY.toInt().coerceAtLeast(1).coerceAtMost(bmp.height - srcT)
+                    val bmpCellW = bmp.width.toFloat()  / totalCols
+                    val bmpCellH = bmp.height.toFloat() / totalRows
+                    val bmpPadX  = bmpCellW * (padX / cellW)
+                    val bmpPadY  = bmpCellH * (padY / cellH)
+                    val srcL = (def.col * bmpCellW - bmpPadX).toInt().coerceAtLeast(0)
+                    val srcT = (def.row * bmpCellH - bmpPadY).toInt().coerceAtLeast(0)
+                    val srcR = ((def.col + 1) * bmpCellW + bmpPadX).toInt().coerceAtMost(bmp.width)
+                    val srcB = ((def.row + 1) * bmpCellH + bmpPadY).toInt().coerceAtMost(bmp.height)
                     drawImage(
                         image     = bmp,
                         srcOffset = IntOffset(srcL, srcT),
-                        srcSize   = IntSize(srcW, srcH),
+                        srcSize   = IntSize((srcR - srcL).coerceAtLeast(1), (srcB - srcT).coerceAtLeast(1)),
                         dstOffset = IntOffset.Zero,
                         dstSize   = IntSize(w.toInt(), h.toInt())
                     )
