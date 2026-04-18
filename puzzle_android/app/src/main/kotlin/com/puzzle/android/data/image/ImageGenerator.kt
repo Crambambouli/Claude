@@ -16,8 +16,8 @@ import kotlin.random.Random
 object ImageGenerator {
 
     private val client = OkHttpClient.Builder()
-        .connectTimeout(30, TimeUnit.SECONDS)
-        .readTimeout(60, TimeUnit.SECONDS)
+        .connectTimeout(15, TimeUnit.SECONDS)
+        .readTimeout(25, TimeUnit.SECONDS)
         .build()
 
     fun buildUrl(category: PuzzleCategory, style: PuzzleStyle): String {

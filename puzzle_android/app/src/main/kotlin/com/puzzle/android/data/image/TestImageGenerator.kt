@@ -4,52 +4,50 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.PorterDuff
+import android.graphics.PorterDuffXfermode
+import android.graphics.RadialGradient
+import android.graphics.Shader
+import android.graphics.SweepGradient
 
 object TestImageGenerator {
 
-    /** Creates a (cols×100) × (rows×100) bitmap with colour-coded numbered cells. */
     fun create(cols: Int, rows: Int): Bitmap {
         val cellPx = 100
         val w = cols * cellPx
         val h = rows * cellPx
         val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.WHITE
-            textSize = cellPx * 0.35f
-            textAlign = Paint.Align.CENTER
-            isFakeBoldText = true
-        }
-        val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(80, 0, 0, 0)
-            strokeWidth = 1.5f
-            style = Paint.Style.STROKE
-        }
 
-        val total = cols * rows
-        for (r in 0 until rows) {
-            for (c in 0 until cols) {
-                val idx = r * cols + c
-                // Hue cycles over the whole image
-                val hue = idx.toFloat() / total * 360f
-                fillPaint.color = Color.HSVToColor(floatArrayOf(hue, 0.65f, 0.88f))
-
-                val left   = (c * cellPx).toFloat()
-                val top    = (r * cellPx).toFloat()
-                val right  = left + cellPx
-                val bottom = top + cellPx
-
-                canvas.drawRect(left, top, right, bottom, fillPaint)
-                canvas.drawRect(left, top, right, bottom, linePaint)
-                canvas.drawText(
-                    "${idx + 1}",
-                    left + cellPx / 2f,
-                    top + cellPx * 0.62f,
-                    textPaint
-                )
-            }
+        val radialPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = RadialGradient(
+                w * 0.35f, h * 0.35f, maxOf(w, h) * 0.9f,
+                intArrayOf(
+                    Color.rgb(255, 220, 230),
+                    Color.rgb(240, 100, 150),
+                    Color.rgb(160, 40, 100)
+                ),
+                floatArrayOf(0f, 0.55f, 1f),
+                Shader.TileMode.CLAMP
+            )
         }
+        canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), radialPaint)
+
+        val sweepPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = SweepGradient(
+                w * 0.65f, h * 0.65f,
+                intArrayOf(
+                    Color.argb(90, 255, 200, 50),
+                    Color.argb(90, 80, 180, 255),
+                    Color.argb(90, 200, 80, 200),
+                    Color.argb(90, 255, 200, 50)
+                ),
+                null
+            )
+            xfermode = PorterDuffXfermode(PorterDuff.Mode.OVERLAY)
+        }
+        canvas.drawRect(0f, 0f, w.toFloat(), h.toFloat(), sweepPaint)
+
         return bitmap
     }
 }
