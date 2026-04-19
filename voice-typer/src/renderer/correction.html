@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Blitztext – Korrekturen</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    font-size: 13px;
+    background: #1e1e2e;
+    color: #cdd6f4;
+    padding: 20px;
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+    gap: 14px;
+  }
+
+  h1 { font-size: 15px; font-weight: 600; color: #89b4fa; }
+
+  label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #6c7086;
+    margin-bottom: 6px;
+  }
+
+  .original-box {
+    background: #181825;
+    border: 1px solid #313244;
+    border-radius: 6px;
+    padding: 10px 12px;
+    font-size: 13px;
+    color: #585b70;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 100px;
+    overflow-y: auto;
+  }
+
+  textarea {
+    flex: 1;
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #45475a;
+    border-radius: 6px;
+    background: #313244;
+    color: #cdd6f4;
+    font-size: 13px;
+    font-family: inherit;
+    line-height: 1.5;
+    resize: none;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  textarea:focus { border-color: #89b4fa; }
+
+  .hint {
+    font-size: 11px;
+    color: #6c7086;
+  }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+  }
+
+  button {
+    padding: 8px 20px;
+    border-radius: 6px;
+    border: none;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 500;
+    transition: opacity 0.15s;
+  }
+  button:hover { opacity: 0.85; }
+
+  .btn-save   { background: #89b4fa; color: #1e1e2e; }
+  .btn-cancel { background: #313244; color: #cdd6f4; border: 1px solid #45475a; }
+</style>
+</head>
+<body>
+
+<h1>✎  Korrekturen lernen</h1>
+
+<div>
+  <label>Erkannt (Original)</label>
+  <div class="original-box" id="originalBox"></div>
+</div>
+
+<div style="display:flex;flex-direction:column;flex:1;gap:6px;">
+  <label>Korrigierter Text</label>
+  <textarea id="corrected" placeholder="Text hier korrigieren…"></textarea>
+</div>
+
+<div class="hint">
+  Alle geänderten Wörter werden als Korrekturregel gespeichert und beim nächsten Diktat automatisch angewendet.
+  Der korrigierte Text wird in die Zwischenablage kopiert.
+</div>
+
+<div class="actions">
+  <button class="btn-cancel" onclick="window.close()">Abbrechen</button>
+  <button class="btn-save"   onclick="save()">Speichern &amp; Lernen</button>
+</div>
+
+<script>
+'use strict';
+const { ipcRenderer } = require('electron');
+
+let originalText = '';
+
+ipcRenderer.on('correction-init', (_e, text) => {
+  originalText = text;
+  document.getElementById('originalBox').textContent = text;
+  const ta = document.getElementById('corrected');
+  ta.value = text;
+  ta.focus();
+  ta.setSelectionRange(0, 0);
+});
+
+function save() {
+  const corrected = document.getElementById('corrected').value.trim();
+  if (!corrected) return;
+  ipcRenderer.send('correction-save', originalText, corrected);
+  window.close();
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') window.close();
+  if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') save();
+});
+</script>
+</body>
+</html>

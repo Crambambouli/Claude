@@ -4,12 +4,15 @@ import * as fs   from 'fs';
 import { AppState, Mode } from './types';
 import { logger } from './logger';
 
+type SpeakState = 'idle' | 'speaking' | 'paused';
+
 interface OverlayCallbacks {
   onModeChange:       (mode: Mode) => void;
   onToggleRecording:  () => void;
   onExit:             () => void;
   onSettings:         () => void;
   onToggleSpeak:      () => void;
+  onPauseSpeak:       () => void;
 }
 
 export class OverlayManager {
@@ -17,6 +20,7 @@ export class OverlayManager {
   private callbacks!: OverlayCallbacks;
   private ipcBound  = false;
   private isCompact = false;
+  private readonly FULL_HEIGHT = 270;
 
   init(callbacks: OverlayCallbacks): void {
     this.callbacks = callbacks;
@@ -29,7 +33,7 @@ export class OverlayManager {
 
     this.win = new BrowserWindow({
       width:       300,
-      height:      240,
+      height:      this.FULL_HEIGHT,
       x:           width  - 320,
       y:           height - 260,
       frame:       false,
@@ -56,9 +60,9 @@ export class OverlayManager {
     this.win.webContents.send('update-state', { state, mode, lastText });
   }
 
-  updateSpeakState(speaking: boolean): void {
+  updateSpeakState(state: SpeakState): void {
     if (!this.win || this.win.isDestroyed()) return;
-    this.win.webContents.send('update-speak-state', speaking);
+    this.win.webContents.send('update-speak-state', state);
   }
 
   toggle(): void {
@@ -92,7 +96,7 @@ export class OverlayManager {
     ipcMain.on('overlay-drag-move', (_e, x: number, y: number) => {
       if (!this.win || this.win.isDestroyed()) return;
       const wa = screen.getPrimaryDisplay().workArea;
-      const h  = this.isCompact ? 32 : 240;
+      const h  = this.isCompact ? 32 : this.FULL_HEIGHT;
       const nx = Math.max(wa.x, Math.min(x, wa.x + wa.width  - 300));
       const ny = Math.max(wa.y, Math.min(y, wa.y + wa.height - h));
       this.win.setPosition(nx, ny);
@@ -104,10 +108,11 @@ export class OverlayManager {
       if (!this.win || this.win.isDestroyed()) return;
       this.isCompact = !this.isCompact;
       this.win.setResizable(true);
-      this.win.setSize(300, this.isCompact ? 32 : 240);
+      this.win.setSize(300, this.isCompact ? 32 : this.FULL_HEIGHT);
       this.win.setResizable(false);
       this.win.webContents.send('overlay-compact', this.isCompact);
     });
+    ipcMain.on('overlay-pause-speak',  () => this.callbacks.onPauseSpeak());
     ipcMain.on('overlay-exit',          () => this.callbacks.onExit());
     ipcMain.on('overlay-open-settings', () => this.callbacks.onSettings());
     ipcMain.on('overlay-toggle-speak',  () => this.callbacks.onToggleSpeak());

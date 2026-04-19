@@ -77,11 +77,15 @@ voice-typer/
 │   ├── whisper.ts         Whisper-Server (Port 8765) + CLI-Fallback
 │   ├── modes.ts           Textmodus-Verarbeitung (Normal/Plus/Rage/Emoji)
 │   ├── clipboard-manager.ts Clipboard + Ctrl+V via WScript.Shell
+│   ├── correction-manager.ts Korrektur-Datenbank (LCS-Diff, Ctrl+F9)
+│   ├── tts-manager.ts     Text-to-Speech via Windows SAPI
 │   ├── settings.ts        JSON-basierter Konfigurations-Manager
 │   ├── logger.ts          Datei- & Konsolen-Logger
 │   ├── types.ts           Gemeinsame TypeScript-Typen
 │   └── renderer/
+│       ├── overlay.html   Schwebendes Overlay-Fenster
 │       ├── recorder.html  Verstecktes Fenster für Mikrofon-Zugriff
+│       ├── correction.html Korrektur-Editor (Ctrl+F9)
 │       └── settings.html  Einstellungs-Dialog
 ├── package.json
 └── tsconfig.json
@@ -112,6 +116,10 @@ voice-typer/
 | `apiKey`          | `""`         | Anthropic API Key                       |
 | `hotkey`          | `"Ctrl+F8"`  | Globaler Hotkey (Electron-Accelerator)  |
 | `audioDevice`     | `""`         | Mikrofon-Geräte-ID (leer = Standard)    |
+| `ttsVoice`        | `""`         | SAPI-Stimme (leer = Systemstimme)       |
+
+Gelernte Korrekturen: `%APPDATA%\Blitztext\corrections.json`  
+Editor öffnen: nach einem Diktat **Ctrl+F9** drücken.
 
 ---
 
@@ -126,7 +134,7 @@ voice-typer/
 
 ```bash
 npm run package
-# → release/ enthält NSIS-Installer für Windows x64
+# → installer/ enthält NSIS-Installer für Windows x64
 ```
 
 ---
