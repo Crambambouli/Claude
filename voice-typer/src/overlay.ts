@@ -42,7 +42,7 @@ export class OverlayManager {
       resizable:   false,
       alwaysOnTop: true,
       skipTaskbar: true,
-      focusable:   false,
+      focusable:   true,
       show:        true,
       webPreferences: {
         nodeIntegration:  true,
@@ -50,6 +50,11 @@ export class OverlayManager {
         backgroundThrottling: false,
       },
     });
+
+    // Gibt Focus sofort zurück – verhindert Focus-Diebstahl beim Klicken,
+    // sichert zuverlässige Maus-Event-Lieferung (focusable:false blockiert
+    // auf Windows unter bestimmten DWM-Zuständen alle Mouse-Events).
+    this.win.on('focus', () => { this.win?.blur(); });
 
     const htmlPath = this.findFile('overlay.html');
     this.win.loadFile(htmlPath);
