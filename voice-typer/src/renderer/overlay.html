@@ -379,25 +379,32 @@ function pauseSpeak() {
   ipcRenderer.send('overlay-pause-speak');
 }
 
-// ─── Manuelles Dragging via mousemove (kein setInterval → kein IPC-Stau) ─────
+// ─── Manuelles Dragging – RAF-gedrosselt (verhindert IPC-Queue-Überlauf) ──────
 (function () {
   const titleBar = document.querySelector('.title-bar');
   let dragging = false;
-  let anchorX = 0, anchorY = 0;   // Cursor-Offset relativ zur Fenster-Ecke
+  let anchorX = 0, anchorY = 0;
+  let pendingX = 0, pendingY = 0;
+  let rafPending = false;
 
   titleBar.addEventListener('mousedown', e => {
     if (e.target.closest('.controls')) return;
     dragging = true;
-    anchorX = e.clientX;   // Greifpunkt X relativ zur Fenster-linken-Kante
-    anchorY = e.clientY;   // Greifpunkt Y relativ zur Fenster-oberen-Kante
+    anchorX = e.clientX;
+    anchorY = e.clientY;
   });
 
   document.addEventListener('mousemove', e => {
     if (!dragging) return;
-    ipcRenderer.send('overlay-drag-move',
-      e.screenX - anchorX,   // neue Fenster-Left
-      e.screenY - anchorY,   // neue Fenster-Top
-    );
+    pendingX = e.screenX - anchorX;
+    pendingY = e.screenY - anchorY;
+    if (!rafPending) {
+      rafPending = true;
+      requestAnimationFrame(() => {
+        rafPending = false;
+        if (dragging) ipcRenderer.send('overlay-drag-move', pendingX, pendingY);
+      });
+    }
   });
 
   document.addEventListener('mouseup', () => { dragging = false; });
