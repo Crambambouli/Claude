@@ -1,18 +1,19 @@
 import {
-  app, BrowserWindow, clipboard, ipcMain, shell, Notification,
+  app, BrowserWindow, clipboard, globalShortcut, ipcMain, shell, Notification,
 } from 'electron';
 import * as path from 'path';
 import * as fs   from 'fs';
 
-import { TrayManager }       from './tray';
-import { OverlayManager }    from './overlay';
-import { HotkeyManager }     from './hotkey';
-import { AudioRecorder }     from './audio-recorder';
+import { TrayManager }        from './tray';
+import { OverlayManager }     from './overlay';
+import { HotkeyManager }      from './hotkey';
+import { AudioRecorder }      from './audio-recorder';
 import { WhisperService, stripHallucinations } from './whisper';
-import { ModeProcessor }     from './modes';
-import { ClipboardManager }  from './clipboard-manager';
-import { TtsManager }        from './tts-manager';
-import { SettingsManager }   from './settings';
+import { ModeProcessor }      from './modes';
+import { ClipboardManager }   from './clipboard-manager';
+import { TtsManager }         from './tts-manager';
+import { CorrectionManager }  from './correction-manager';
+import { SettingsManager }    from './settings';
 import { AppState, Mode, Settings } from './types';
 import { logger } from './logger';
 
@@ -33,8 +34,10 @@ class VoiceTyper {
   private whisper!:   WhisperService;
   private modes!:     ModeProcessor;
   private clipboard!: ClipboardManager;
-  private tts!:       TtsManager;
-  private settings!:  SettingsManager;
+  private tts!:         TtsManager;
+  private corrections!: CorrectionManager;
+  private settings!:   SettingsManager;
+  private lastRawTranscript = '';
 
   private state:       AppState = 'idle';
   private currentMode: Mode     = 'Normal';
@@ -63,10 +66,17 @@ class VoiceTyper {
     this.recorder  = new AudioRecorder();
     this.recorder.init();
 
-    this.clipboard = new ClipboardManager();
-    this.tts       = new TtsManager();
+    this.clipboard   = new ClipboardManager();
+    this.tts         = new TtsManager();
     this.tts.setReplacements(s.ttsReplacements ?? {});
     this.tts.setVoice(s.ttsVoice ?? '');
+    this.corrections = new CorrectionManager();
+
+    globalShortcut.register('Ctrl+F9', () => {
+      if (this.lastRawTranscript) {
+        CorrectionWindow.open(this.lastRawTranscript, this.corrections, this.clipboard);
+      }
+    });
 
     this.tray = new TrayManager();
     this.tray.init({
@@ -127,8 +137,15 @@ class VoiceTyper {
       logger.info('Settings vom Settings-Fenster übernommen.');
     });
 
-    ipcMain.handle('get-audio-devices', () => this.recorder.getDevices());
-    ipcMain.handle('get-tts-voices',   () => this.tts.getVoices());
+    ipcMain.handle('get-audio-devices',  () => this.recorder.getDevices());
+    ipcMain.handle('get-tts-voices',     () => this.tts.getVoices());
+    ipcMain.handle('get-corrections',    () => this.corrections.getAll());
+    ipcMain.on('delete-correction',  (_e, wrong: string) => this.corrections.remove(wrong));
+    ipcMain.on('correction-save', (_e, original: string, corrected: string) => {
+      this.corrections.learn(original, corrected);
+      this.clipboard.setText(corrected);
+      logger.info('Korrekturen gelernt, korrigierter Text in Zwischenablage.');
+    });
 
     ipcMain.handle('check-whisper', (_e, whisperPath: string) => {
       const tmp = new WhisperService(whisperPath);
@@ -205,7 +222,14 @@ class VoiceTyper {
         logger.info(`Halluzination entfernt: "${transcript.trim()}" → "${cleaned}"`);
       }
 
-      const result = await this.modes.process(cleaned, this.currentMode);
+      // Korrektur-DB anwenden + Rohtext für Ctrl+F9 merken
+      this.lastRawTranscript = cleaned;
+      const corrected = this.corrections.correct(cleaned);
+      if (corrected !== cleaned) {
+        logger.info(`Automatische Korrektur: "${cleaned}" → "${corrected}"`);
+      }
+
+      const result = await this.modes.process(corrected, this.currentMode);
       logger.info(`Finaler Text: "${result.slice(0, 100)}"`);
 
       this.lastText = result.slice(0, 120);
@@ -260,6 +284,7 @@ class VoiceTyper {
 
   private quit(): void {
     logger.info('App wird beendet.');
+    globalShortcut.unregister('Ctrl+F9');
     this.hotkey?.unregister();
     this.recorder?.destroy();
     this.whisper?.destroy();
@@ -311,6 +336,37 @@ class SettingsWindow {
     });
 
     SettingsWindow.win.on('closed', () => { SettingsWindow.win = null; });
+  }
+}
+
+// ─── Korrektur-Fenster ───────────────────────────────────────────────────────
+
+class CorrectionWindow {
+  private static win: BrowserWindow | null = null;
+
+  static open(original: string, corrections: CorrectionManager, cb: ClipboardManager): void {
+    if (CorrectionWindow.win && !CorrectionWindow.win.isDestroyed()) {
+      CorrectionWindow.win.focus();
+      return;
+    }
+
+    CorrectionWindow.win = new BrowserWindow({
+      width: 560, height: 400,
+      resizable: true,
+      title: 'Blitztext – Korrekturen',
+      show: false,
+      webPreferences: { nodeIntegration: true, contextIsolation: false },
+    });
+
+    CorrectionWindow.win.loadFile(findRendererFile('correction.html'));
+    CorrectionWindow.win.setMenu(null);
+
+    CorrectionWindow.win.once('ready-to-show', () => {
+      CorrectionWindow.win?.show();
+      CorrectionWindow.win?.webContents.send('correction-init', original);
+    });
+
+    CorrectionWindow.win.on('closed', () => { CorrectionWindow.win = null; });
   }
 }
 

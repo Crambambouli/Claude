@@ -149,6 +149,31 @@
       transition: background .15s;
     }
     .add-btn:hover { background: #45475a; }
+
+    /* ─── Korrekturen-Liste ──────────────────────────── */
+    .correction-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+      font-size: 12px;
+    }
+    .correction-row .wrong {
+      flex: 1;
+      color: #f38ba8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .correction-arrow { color: #6c7086; flex-shrink: 0; }
+    .correction-row .right {
+      flex: 1;
+      color: #a6e3a1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .corrections-empty { font-size: 12px; color: #45475a; }
   </style>
 </head>
 <body>
@@ -225,6 +250,12 @@
   <div id="replacementsList"></div>
   <button class="add-btn" onclick="addReplacement()">+ Eintrag hinzufügen</button>
   <div class="hint" style="margin-top:6px">Begriff (links) wird beim Vorlesen durch Aussprache (rechts) ersetzt.</div>
+</div>
+
+<!-- Korrekturen -->
+<div class="section">
+  <div class="section-title">Gelernte Korrekturen (Ctrl+F9)</div>
+  <div id="correctionsList"><span class="corrections-empty">Keine Einträge.</span></div>
 </div>
 
 <!-- Aktionen -->
@@ -334,6 +365,37 @@
   }
 
   function openLog() { api.openLogFile(); }
+
+  // ─── Korrekturen ───────────────────────────────────────────────────────
+  function loadCorrections() {
+    api.getCorrections().then((map) => {
+      const list = document.getElementById('correctionsList');
+      list.innerHTML = '';
+      const entries = Object.entries(map);
+      if (!entries.length) {
+        list.innerHTML = '<span class="corrections-empty">Keine Einträge.</span>';
+        return;
+      }
+      for (const [wrong, right] of entries) {
+        const row = document.createElement('div');
+        row.className = 'correction-row';
+        row.innerHTML =
+          `<span class="wrong">${esc(wrong)}</span>` +
+          `<span class="correction-arrow">→</span>` +
+          `<span class="right">${esc(right)}</span>` +
+          `<button class="remove-btn" title="Löschen">×</button>`;
+        row.querySelector('.remove-btn').addEventListener('click', () => {
+          api.deleteCorrection(wrong);
+          row.remove();
+          if (!document.querySelector('#correctionsList .correction-row')) {
+            list.innerHTML = '<span class="corrections-empty">Keine Einträge.</span>';
+          }
+        });
+        list.appendChild(row);
+      }
+    });
+  }
+  loadCorrections();
 </script>
 </body>
 </html>

@@ -31,6 +31,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getTtsVoices: (): Promise<string[]> =>
     ipcRenderer.invoke('get-tts-voices'),
 
+  /** Gibt alle gelernten Korrekturen zurück. */
+  getCorrections: (): Promise<Record<string, string>> =>
+    ipcRenderer.invoke('get-corrections'),
+
+  /** Löscht einen Korrektur-Eintrag. */
+  deleteCorrection: (wrong: string): void =>
+    ipcRenderer.send('delete-correction', wrong),
+
   /** Öffnet Log-Datei im System-Editor. */
   openLogFile: (): void =>
     ipcRenderer.send('open-log-file'),
