@@ -21,6 +21,8 @@ export class OverlayManager {
   private ipcBound  = false;
   private isCompact = false;
   private readonly FULL_HEIGHT = 270;
+  // workArea wird einmalig gecacht (ändert sich nur bei Monitor-Änderungen)
+  private workArea  = screen.getPrimaryDisplay().workArea;
 
   init(callbacks: OverlayCallbacks): void {
     this.callbacks = callbacks;
@@ -93,9 +95,13 @@ export class OverlayManager {
       this.callbacks.onToggleRecording();
     });
 
+    screen.on('display-metrics-changed', () => {
+      this.workArea = screen.getPrimaryDisplay().workArea;
+    });
+
     ipcMain.on('overlay-drag-move', (_e, x: number, y: number) => {
       if (!this.win || this.win.isDestroyed()) return;
-      const wa = screen.getPrimaryDisplay().workArea;
+      const wa = this.workArea;
       const h  = this.isCompact ? 32 : this.FULL_HEIGHT;
       const nx = Math.max(wa.x, Math.min(x, wa.x + wa.width  - 300));
       const ny = Math.max(wa.y, Math.min(y, wa.y + wa.height - h));
