@@ -7,7 +7,7 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   html, body {
-    width: 300px; height: 240px;
+    width: 300px; height: 270px;
     overflow: hidden;
     font-family: 'Segoe UI', system-ui, sans-serif;
     font-size: 12px;
@@ -48,13 +48,13 @@
     display: flex;
     flex-direction: column;
     align-items: center;
-    padding: 14px 0 10px;
+    padding: 12px 0 8px;
   }
 
   .btn-row {
     display: flex;
     gap: 20px;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
   }
 
@@ -84,6 +84,7 @@
   .speak-btn.idle     { border-color: #45475a; }
   .speak-btn.speaking { border-color: #89b4fa; background: #1e2e4a;
                         animation: pulse-blue 1s ease-in-out infinite; }
+  .speak-btn.paused   { border-color: #cba6f7; background: #2a1e4a; }
 
   @keyframes pulse-red {
     0%, 100% { box-shadow: 0 0 0 0 rgba(243,139,168,.4); }
@@ -97,6 +98,29 @@
     0%, 100% { box-shadow: 0 0 0 0 rgba(137,180,250,.4); }
     50%       { box-shadow: 0 0 0 10px rgba(137,180,250,0); }
   }
+
+  /* ─── Speak-Gruppe (Stop + Pause-Taste) ──────────── */
+  .speak-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .pause-btn {
+    width: 72px;
+    padding: 4px 0;
+    border-radius: 5px;
+    border: 1px solid #45475a;
+    background: #313244;
+    color: #cdd6f4;
+    font-size: 13px;
+    cursor: pointer;
+    display: none;
+    transition: border-color .12s, background .12s;
+  }
+  .pause-btn:hover  { border-color: #89b4fa; background: #1e2e4a; }
+  .pause-btn.visible { display: block; }
 
   .status-label {
     margin-top: 6px;
@@ -204,9 +228,12 @@
     <button class="record-btn idle" id="recordBtn" onclick="toggleRecording()" title="Klicken oder Ctrl+F8">
       <span id="recordIcon">🎤</span>
     </button>
-    <button class="speak-btn idle" id="speakBtn" onclick="toggleSpeak()" title="Zwischenablage vorlesen">
-      <span id="speakIcon">🔊</span>
-    </button>
+    <div class="speak-group">
+      <button class="speak-btn idle" id="speakBtn" onclick="toggleSpeak()" title="Zwischenablage vorlesen / stoppen">
+        <span id="speakIcon">🔊</span>
+      </button>
+      <button class="pause-btn" id="pauseBtn" onclick="pauseSpeak()" title="Pause / Weiter">⏸</button>
+    </div>
   </div>
   <div class="status-label idle" id="statusLabel">BEREIT</div>
   <div class="hotkey-hint" id="hintLabel">Klicken oder Ctrl+F8 drücken</div>
@@ -240,6 +267,7 @@ const lastTextEl  = document.getElementById('lastText');
 const copyBtn     = document.getElementById('copyBtn');
 const speakBtn    = document.getElementById('speakBtn');
 const speakIcon   = document.getElementById('speakIcon');
+const pauseBtn    = document.getElementById('pauseBtn');
 
 let currentLastText = '';
 
@@ -256,9 +284,24 @@ ipcRenderer.on('overlay-compact', (_e, compact) => {
 });
 
 // ─── Speak-State-Updates ────────────────────────────────────────────────────
-ipcRenderer.on('update-speak-state', (_e, speaking) => {
-  speakBtn.className = `speak-btn ${speaking ? 'speaking' : 'idle'}`;
-  speakIcon.textContent = speaking ? '⏹' : '🔊';
+ipcRenderer.on('update-speak-state', (_e, state) => {
+  if (state === 'idle') {
+    speakBtn.className  = 'speak-btn idle';
+    speakIcon.textContent = '🔊';
+    pauseBtn.classList.remove('visible');
+  } else if (state === 'speaking') {
+    speakBtn.className  = 'speak-btn speaking';
+    speakIcon.textContent = '⏹';
+    pauseBtn.classList.add('visible');
+    pauseBtn.textContent = '⏸';
+    pauseBtn.title = 'Pause';
+  } else if (state === 'paused') {
+    speakBtn.className  = 'speak-btn paused';
+    speakIcon.textContent = '⏹';
+    pauseBtn.classList.add('visible');
+    pauseBtn.textContent = '▶';
+    pauseBtn.title = 'Weiter';
+  }
 });
 
 // ─── State-Updates vom Main-Prozess ────────────────────────────────────────
@@ -330,6 +373,10 @@ function openSettings() {
 
 function toggleSpeak() {
   ipcRenderer.send('overlay-toggle-speak');
+}
+
+function pauseSpeak() {
+  ipcRenderer.send('overlay-pause-speak');
 }
 
 // ─── Manuelles Dragging via mousemove (kein setInterval → kein IPC-Stau) ─────

@@ -6,45 +6,49 @@ import { logger } from './logger';
 
 export class TtsManager {
   private proc:         ChildProcess | null = null;
-  private vbsPath:      string;
+  private ps1Path:      string;
   private txtPath:      string;
   private voicePath:    string;
+  private cmdPath:      string;
   private replacements: Record<string, string> = {};
+  private _isPaused     = false;
 
   constructor() {
-    this.vbsPath   = path.join(os.tmpdir(), 'blitztext-tts.vbs');
+    this.ps1Path   = path.join(os.tmpdir(), 'blitztext-tts.ps1');
     this.txtPath   = path.join(os.tmpdir(), 'blitztext-tts-text.txt');
     this.voicePath = path.join(os.tmpdir(), 'blitztext-tts-voice.txt');
-
-    this.writeVbs();
+    this.cmdPath   = path.join(os.tmpdir(), 'blitztext-tts-cmd.txt');
+    this.writePs1();
   }
 
-  private writeVbs(): void {
-    const vbs = [
-      'Dim fso, f, sapi, voices, i, voiceName',
-      'Set fso = CreateObject("Scripting.FileSystemObject")',
-      `Set f   = fso.OpenTextFile("${this.txtPath}", 1, False, -1)`,
-      'Set sapi = CreateObject("SAPI.SpVoice")',
-      'voiceName = ""',
-      `If fso.FileExists("${this.voicePath}") Then`,
-      '  Dim vf',
-      `  Set vf = fso.OpenTextFile("${this.voicePath}", 1, False, 0)`,
-      '  voiceName = Trim(vf.ReadAll())',
-      '  vf.Close',
-      'End If',
-      'If voiceName <> "" Then',
-      '  Set voices = sapi.GetVoices()',
-      '  For i = 0 To voices.Count - 1',
-      '    If InStr(1, voices.Item(i).GetDescription(), voiceName, 1) > 0 Then',
-      '      Set sapi.Voice = voices.Item(i)',
-      '      Exit For',
-      '    End If',
-      '  Next',
-      'End If',
-      'sapi.Speak f.ReadAll',
-      'f.Close',
-    ].join('\r\n');
-    fs.writeFileSync(this.vbsPath, vbs, 'utf8');
+  private writePs1(): void {
+    // System.Speech.Synthesis supports Pause()/Resume() – VBScript/wscript does not.
+    // The script polls a command file every 100 ms to react to pause/resume requests.
+    const ps1 = [
+      'Add-Type -AssemblyName System.Speech',
+      '$synth = New-Object System.Speech.Synthesis.SpeechSynthesizer',
+      `if (Test-Path "${this.voicePath}") {`,
+      `  try { $n = (Get-Content -Path "${this.voicePath}" -Raw).Trim(); if ($n) { $synth.SelectVoice($n) } } catch {}`,
+      '}',
+      `$text = Get-Content -Path "${this.txtPath}" -Raw -Encoding UTF8`,
+      '$synth.SpeakAsync($text) | Out-Null',
+      '$lastCmd = ""',
+      'while ($synth.State -ne [System.Speech.Synthesis.SynthesizerState]::Ready) {',
+      `  if (Test-Path "${this.cmdPath}") {`,
+      `    try { $c = (Get-Content -Path "${this.cmdPath}" -Raw -ErrorAction Stop).Trim() } catch { $c = "" }`,
+      '    if ($c -ne $lastCmd) {',
+      '      $lastCmd = $c',
+      '      if ($c -eq "pause")  { $synth.Pause() }',
+      '      elseif ($c -eq "resume") { $synth.Resume() }',
+      '      elseif ($c -eq "stop")   { $synth.SpeakAsyncCancelAll(); break }',
+      '    }',
+      '  }',
+      '  Start-Sleep -Milliseconds 100',
+      '}',
+      '$synth.Dispose()',
+      `Remove-Item -Path "${this.cmdPath}" -Force -ErrorAction SilentlyContinue`,
+    ].join('\n');
+    fs.writeFileSync(this.ps1Path, ps1, 'utf8');
   }
 
   setVoice(name: string): void {
@@ -57,18 +61,18 @@ export class TtsManager {
   }
 
   getVoices(): string[] {
-    const listVbs = [
-      'Dim sapi, voices, i',
-      'Set sapi = CreateObject("SAPI.SpVoice")',
-      'Set voices = sapi.GetVoices()',
-      'For i = 0 To voices.Count - 1',
-      '  WScript.Echo voices.Item(i).GetDescription()',
-      'Next',
-    ].join('\r\n');
-    const tmpVbs = path.join(os.tmpdir(), 'blitztext-list-voices.vbs');
-    fs.writeFileSync(tmpVbs, listVbs, 'utf8');
-    const result = spawnSync('cscript.exe', ['//NoLogo', tmpVbs], { encoding: 'utf8', windowsHide: true });
-    try { fs.unlinkSync(tmpVbs); } catch { /* ignore */ }
+    const ps1 = [
+      'Add-Type -AssemblyName System.Speech',
+      '$s = New-Object System.Speech.Synthesis.SpeechSynthesizer',
+      '$s.GetInstalledVoices() | ForEach-Object { Write-Output $_.VoiceInfo.Name }',
+      '$s.Dispose()',
+    ].join('\n');
+    const tmpPs1 = path.join(os.tmpdir(), 'blitztext-list-voices.ps1');
+    fs.writeFileSync(tmpPs1, ps1, 'utf8');
+    const result = spawnSync('powershell.exe', [
+      '-NonInteractive', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', tmpPs1,
+    ], { encoding: 'utf8', windowsHide: true });
+    try { fs.unlinkSync(tmpPs1); } catch { /* ignore */ }
     if (result.error || result.status !== 0) return [];
     return result.stdout.split(/\r?\n/).map((s: string) => s.trim()).filter(Boolean);
   }
@@ -93,13 +97,56 @@ export class TtsManager {
     const cleaned = this.applyReplacements(TtsManager.cleanForSpeech(text));
     if (!cleaned) return;
 
-    // Text als UTF-16 LE mit BOM schreiben – VBScript OpenTextFile(..., -1) liest Unicode
-    fs.writeFileSync(this.txtPath, '\ufeff' + cleaned, 'utf16le');
+    fs.writeFileSync(this.txtPath, cleaned, 'utf8');
+    try { fs.unlinkSync(this.cmdPath); } catch { /* ignore */ }
 
-    this.proc = spawn('wscript.exe', [this.vbsPath], { windowsHide: true });
-    this.proc.on('exit', () => { this.proc = null; onDone?.(); });
+    this.proc = spawn('powershell.exe', [
+      '-NonInteractive', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', this.ps1Path,
+    ], { windowsHide: true });
+    this.proc.on('exit', () => { this.proc = null; this._isPaused = false; onDone?.(); });
 
     logger.info(`TTS gestartet: "${cleaned.slice(0, 60)}"`);
+  }
+
+  pause(): void {
+    if (this.proc && !this._isPaused) {
+      fs.writeFileSync(this.cmdPath, 'pause', 'utf8');
+      this._isPaused = true;
+      logger.info('TTS pausiert.');
+    }
+  }
+
+  resume(): void {
+    if (this.proc && this._isPaused) {
+      fs.writeFileSync(this.cmdPath, 'resume', 'utf8');
+      this._isPaused = false;
+      logger.info('TTS fortgesetzt.');
+    }
+  }
+
+  stop(): void {
+    if (this.proc) {
+      this.proc.kill();
+      this.proc = null;
+      this._isPaused = false;
+      try { fs.unlinkSync(this.cmdPath); } catch { /* ignore */ }
+      logger.info('TTS gestoppt.');
+    }
+  }
+
+  isSpeaking(): boolean {
+    return this.proc !== null;
+  }
+
+  isPausedState(): boolean {
+    return this._isPaused;
+  }
+
+  destroy(): void {
+    this.stop();
+    for (const p of [this.ps1Path, this.txtPath, this.voicePath, this.cmdPath]) {
+      try { fs.unlinkSync(p); } catch { /* ignore */ }
+    }
   }
 
   static cleanForSpeech(text: string): string {
@@ -123,24 +170,5 @@ export class TtsManager {
       .replace(/\.\s*\./g, '.')
       .replace(/\s{2,}/g, ' ')
       .trim();
-  }
-
-  stop(): void {
-    if (this.proc) {
-      this.proc.kill();
-      this.proc = null;
-      logger.info('TTS gestoppt.');
-    }
-  }
-
-  isSpeaking(): boolean {
-    return this.proc !== null;
-  }
-
-  destroy(): void {
-    this.stop();
-    for (const p of [this.vbsPath, this.txtPath, this.voicePath]) {
-      try { fs.unlinkSync(p); } catch { /* ignore */ }
-    }
   }
 }

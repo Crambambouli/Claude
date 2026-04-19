@@ -95,6 +95,7 @@ class VoiceTyper {
       onExit:            () => this.quit(),
       onSettings:        () => SettingsWindow.open(this.settings, this.recorder, this.whisper),
       onToggleSpeak:     () => this.handleToggleSpeak(),
+      onPauseSpeak:      () => this.handlePauseSpeak(),
     });
 
     this.hotkey = new HotkeyManager(s.hotkey || 'Ctrl+F8');
@@ -270,15 +271,25 @@ class VoiceTyper {
   private handleToggleSpeak(): void {
     if (this.tts.isSpeaking()) {
       this.tts.stop();
-      this.overlay.updateSpeakState(false);
+      this.overlay.updateSpeakState('idle');
     } else {
       const text = clipboard.readText();
       if (!text.trim()) {
         logger.info('TTS: Zwischenablage leer.');
         return;
       }
-      this.overlay.updateSpeakState(true);
-      this.tts.speak(text, () => this.overlay.updateSpeakState(false));
+      this.overlay.updateSpeakState('speaking');
+      this.tts.speak(text, () => this.overlay.updateSpeakState('idle'));
+    }
+  }
+
+  private handlePauseSpeak(): void {
+    if (this.tts.isPausedState()) {
+      this.tts.resume();
+      this.overlay.updateSpeakState('speaking');
+    } else if (this.tts.isSpeaking()) {
+      this.tts.pause();
+      this.overlay.updateSpeakState('paused');
     }
   }
 
