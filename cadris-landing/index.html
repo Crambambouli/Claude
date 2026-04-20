@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Cadris — Ein Companion. Kein Chatfenster.</title>
+<meta name="description" content="Cadris ist dein ruhiger Begleiter für Fokus, Kontext und situative Assistenz. Ein System, das sich anfühlt wie ein Produkt." />
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+
+<!-- ============ NAV ============ -->
+<header class="nav">
+  <div class="nav__inner">
+    <a href="#top" class="brand" aria-label="Cadris">
+      <span class="brand__mark" aria-hidden="true"></span>
+      <span class="brand__word">Cadris</span>
+    </a>
+    <nav class="nav__links">
+      <a href="#system">System</a>
+      <a href="#modes">Modes</a>
+      <a href="#module">Module</a>
+      <a href="#audience">Für wen</a>
+    </nav>
+    <a href="#start" class="btn btn--ghost btn--sm">Zugang anfragen</a>
+  </div>
+</header>
+
+<!-- ============ HERO ============ -->
+<section id="top" class="hero">
+  <div class="container">
+    <p class="eyebrow">Companion · Display · Glass</p>
+    <h1 class="hero__title">
+      Ein Companion.<br />
+      <em>Kein Chatfenster.</em>
+    </h1>
+    <p class="hero__lede">
+      Cadris hält deinen Kontext, führt dich durch den Tag und wächst mit dir mit.
+      Ein System, das sich anfühlt wie ein Produkt — nicht wie ein Werkzeugkasten.
+    </p>
+    <div class="hero__cta">
+      <a href="#start" class="btn btn--primary">Zugang anfragen</a>
+      <a href="#system" class="btn btn--link">Cadris kennenlernen <span aria-hidden="true">↓</span></a>
+    </div>
+  </div>
+
+  <!-- Hero-Inszenierung: Display-Fragment + schwebendes Glass -->
+  <div class="container hero__stage" aria-hidden="true">
+    <div class="stage">
+      <!-- DISPLAY -->
+      <div class="display">
+        <div class="display__chrome">
+          <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          <span class="display__label">Cadris Display · Arbeitsraum</span>
+        </div>
+        <div class="display__body">
+          <div class="display__col">
+            <p class="kicker">Heute</p>
+            <h3 class="display__h">Pitch vorbereiten</h3>
+            <p class="muted">Letzter Stand: gestern, 17:42. Drei offene Fäden.</p>
+            <ul class="thread-list">
+              <li><span class="thread-dot"></span>Nutzenversprechen schärfen</li>
+              <li><span class="thread-dot thread-dot--active"></span>Referenzfall auswählen</li>
+              <li><span class="thread-dot"></span>Preisfolie überarbeiten</li>
+            </ul>
+          </div>
+          <div class="display__col display__col--muted">
+            <p class="kicker">Cadris</p>
+            <p class="display__hint">Du warst zuletzt beim Referenzfall. Soll ich die beiden Kandidaten aus gestern gegenüberstellen?</p>
+            <div class="chips">
+              <span class="chip">Gegenüberstellen</span>
+              <span class="chip chip--ghost">Später</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- GLASS -->
+      <div class="glass">
+        <div class="glass__bar"></div>
+        <p class="glass__label">Glass</p>
+        <p class="glass__text">Nächster Termin in 6&nbsp;Min. Du wolltest die Notiz zum Kunden noch öffnen.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PROBLEM ============ -->
+<section class="section section--tight">
+  <div class="container grid-2">
+    <div>
+      <p class="eyebrow">Spannungsfeld</p>
+      <h2 class="h2">Tools gibt es genug.<br /><em>Was fehlt, ist Zusammenhang.</em></h2>
+    </div>
+    <div class="col-text">
+      <p>Der Tag zerfällt in Fenster, Threads und halbfertige Gedanken. Jedes Tool kennt seinen kleinen Ausschnitt — keines trägt deinen Arbeitsfluss.</p>
+      <p>Chatbots antworten. Sie begleiten nicht. Sie erinnern sich nicht daran, wo du gestern stehen geblieben bist, was als nächstes dran ist und welcher Kontext gerade zählt.</p>
+      <p class="muted">Cadris setzt genau dort an.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ============ SYSTEM / WAS CADRIS IST ============ -->
+<section id="system" class="section">
+  <div class="container">
+    <p class="eyebrow">System</p>
+    <h2 class="h2">Außen Produkt.<br /><em>Innen System.</em></h2>
+    <p class="section__lede">Cadris ist ein starker Core, der allein schon als vollwertiger Companion taugt — und ein modulares System, das mitwächst, wenn du mehr willst.</p>
+
+    <div class="system-grid">
+      <article class="card">
+        <p class="kicker">Core</p>
+        <h3 class="card__h">Kontext, der bleibt.</h3>
+        <p>Cadris weiß, was offen ist, was gerade zählt und wo du stehen geblieben bist. Keine Chat-Threads zum Durchsuchen.</p>
+      </article>
+      <article class="card">
+        <p class="kicker">Module</p>
+        <h3 class="card__h">Mitwachsend, nicht überladen.</h3>
+        <p>Module wie Business, Sales, Research oder Voice docken am Core an — nur dann, wenn du sie brauchst.</p>
+      </article>
+      <article class="card">
+        <p class="kicker">Setup</p>
+        <h3 class="card__h">One-Click. Kein Bastelset.</h3>
+        <p>Keine Routing-Matrix, kein Server-Zoo. Cadris ist ein Produkt, kein Administrator-Abenteuer.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ MODES ============ -->
+<section id="modes" class="section section--alt">
+  <div class="container">
+    <p class="eyebrow">Modes</p>
+    <h2 class="h2">Ein Core.<br /><em>Zwei Experience Modes.</em></h2>
+    <p class="section__lede">Cadris kennt zwei native Betriebsformen. Sie teilen denselben Kontext — aber nicht dieselbe Bühne.</p>
+
+    <div class="modes">
+      <article class="mode mode--display">
+        <header class="mode__head">
+          <span class="mode__tag">Cadris Display</span>
+          <h3 class="mode__h">Der Arbeitsraum.</h3>
+        </header>
+        <p class="mode__text">Großflächig, ruhig, geordnet. Hier planst du, schreibst du, denkst du nach. Cadris Display ist dein Steuerpult für Tag, Projekt und Wissen.</p>
+        <ul class="mode__list">
+          <li>Fokus-Ansicht mit offenen Fäden</li>
+          <li>Wiederaufnahme statt Neuanfang</li>
+          <li>Wissen, das sich selbst ordnet</li>
+        </ul>
+      </article>
+
+      <article class="mode mode--glass">
+        <header class="mode__head">
+          <span class="mode__tag mode__tag--glass">Cadris Glass</span>
+          <h3 class="mode__h">Der Situationsraum.</h3>
+        </header>
+        <p class="mode__text">Diskret, randlos, in Echtzeit. Glass erscheint, wenn es zählt — vor dem Call, beim Gespräch, zwischen zwei Gedanken — und verschwindet wieder.</p>
+        <ul class="mode__list">
+          <li>Situative Hinweise, nie laut</li>
+          <li>Briefings, Stichworte, Erinnerungen</li>
+          <li>Präsenz ohne Ablenkung</li>
+        </ul>
+      </article>
+    </div>
+
+    <p class="modes__footnote">Gleicher Core. Unterschiedliche Momente. Display, wenn du arbeitest. Glass, wenn du reagierst.</p>
+  </div>
+</section>
+
+<!-- ============ MODULE ============ -->
+<section id="module" class="section">
+  <div class="container">
+    <p class="eyebrow">Module</p>
+    <h2 class="h2">Beginne klein.<br /><em>Wachse souverän.</em></h2>
+    <p class="section__lede">Der Core steht für sich. Module erweitern Cadris entlang deiner Wirklichkeit — Beruf, Rolle, Arbeitsweise.</p>
+
+    <div class="modules">
+      <article class="module module--core">
+        <span class="module__index">01</span>
+        <h3 class="module__h">Core</h3>
+        <p>Das Fundament. Kontext, Orientierung, Wiederaufnahme, ruhige Begleitung. Allein schon ein vollständiger Companion.</p>
+        <span class="module__state">Inklusive</span>
+      </article>
+      <article class="module">
+        <span class="module__index">02</span>
+        <h3 class="module__h">Business</h3>
+        <p>Projekte, Vorgänge, Unterlagen. Für Verantwortung, die sich nicht in Chats führen lässt.</p>
+      </article>
+      <article class="module">
+        <span class="module__index">03</span>
+        <h3 class="module__h">Sales</h3>
+        <p>Vom ersten Kontakt bis zum Abschluss. Gespräche, Kunden, Nuancen — präsent, wenn sie zählen.</p>
+      </article>
+      <article class="module">
+        <span class="module__index">04</span>
+        <h3 class="module__h">Research · Intelligence</h3>
+        <p>Tiefe statt Treffer. Quellen, Zusammenhänge, belastbare Einschätzung statt Suchergebnisse.</p>
+      </article>
+      <article class="module">
+        <span class="module__index">05</span>
+        <h3 class="module__h">Voice · Presence</h3>
+        <p>Cadris mit Stimme und situativer Präsenz. Hören, erinnern, kurz einwerfen — nie unterbrechen.</p>
+      </article>
+      <article class="module">
+        <span class="module__index">06</span>
+        <h3 class="module__h">Pro · Builder</h3>
+        <p>Für Power-User: feinere Kontrolle, eigene Abläufe, erweiterte Integrationen — ohne den Core zu belasten.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FEELING ============ -->
+<section class="section section--alt">
+  <div class="container">
+    <p class="eyebrow">Erfahrung</p>
+    <h2 class="h2">So fühlt sich<br /><em>Cadris an.</em></h2>
+
+    <div class="feeling">
+      <figure class="feeling__item">
+        <blockquote>„Du warst beim Referenzfall stehen geblieben.“</blockquote>
+        <figcaption>Wiederaufnahme statt Neuanfang.</figcaption>
+      </figure>
+      <figure class="feeling__item">
+        <blockquote>„In 6&nbsp;Minuten Call. Die Notiz zum Kunden liegt bereit.“</blockquote>
+        <figcaption>Situative Hinweise, nie laut.</figcaption>
+      </figure>
+      <figure class="feeling__item">
+        <blockquote>„Drei Fäden offen. Welchen willst du zuerst schließen?“</blockquote>
+        <figcaption>Orientierung, nicht Überforderung.</figcaption>
+      </figure>
+      <figure class="feeling__item">
+        <blockquote>„Ich halte das im Hintergrund — du kannst weiterarbeiten.“</blockquote>
+        <figcaption>Ruhe als Funktion.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ============ AUDIENCE ============ -->
+<section id="audience" class="section">
+  <div class="container">
+    <p class="eyebrow">Für wen</p>
+    <h2 class="h2">Für Menschen, die <em>klar arbeiten</em> wollen.</h2>
+
+    <div class="audience">
+      <div class="audience__item">
+        <h3>Einzelnutzer</h3>
+        <p>Selbstständige, Wissensarbeiter, Kreative. Alle, deren Tag aus Kontexten besteht — nicht aus Tickets.</p>
+      </div>
+      <div class="audience__item">
+        <h3>Entscheider · Business</h3>
+        <p>Verantwortung ohne Chat-Chaos. Überblick, Vorbereitung, saubere Übergaben.</p>
+      </div>
+      <div class="audience__item">
+        <h3>Vertrieb · Sales</h3>
+        <p>Präsenz im Gespräch, Erinnerung an Nuancen, souveräne Vorbereitung.</p>
+      </div>
+      <div class="audience__item">
+        <h3>Power · Pro</h3>
+        <p>Builder-Energie, eigene Abläufe, tiefere Kontrolle — ohne die Klarheit des Produkts zu verlieren.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section id="start" class="section section--cta">
+  <div class="container">
+    <p class="eyebrow">Start</p>
+    <h2 class="h2 h2--lg">Cadris ist bereit,<br /><em>wenn du es bist.</em></h2>
+    <p class="section__lede">Zugang ist derzeit begrenzt. Trag dich ein — wir melden uns mit einer persönlichen Einführung.</p>
+
+    <form class="form" onsubmit="event.preventDefault(); this.querySelector('.form__ok').hidden=false; this.querySelector('.form__row').hidden=true;">
+      <div class="form__row">
+        <input type="email" required placeholder="deine@adresse.com" aria-label="E-Mail" />
+        <button class="btn btn--primary" type="submit">Zugang anfragen</button>
+      </div>
+      <p class="form__ok" hidden>Danke. Wir melden uns.</p>
+      <p class="form__note">Alternativ: <a href="mailto:hello@cadris.app">hello@cadris.app</a></p>
+    </form>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer">
+  <div class="container footer__inner">
+    <div class="brand brand--footer">
+      <span class="brand__mark" aria-hidden="true"></span>
+      <span class="brand__word">Cadris</span>
+    </div>
+    <p class="footer__line">Companion für Fokus, Kontext und den nächsten Schritt.</p>
+    <p class="footer__meta">© 2026 Cadris · <a href="#">Impressum</a> · <a href="#">Datenschutz</a></p>
+  </div>
+</footer>
+
+</body>
+</html>
