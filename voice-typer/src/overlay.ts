@@ -42,7 +42,7 @@ export class OverlayManager {
       resizable:   false,
       alwaysOnTop: true,
       skipTaskbar: true,
-      focusable:   true,
+      focusable:   false,
       show:        true,
       webPreferences: {
         nodeIntegration:  true,
@@ -50,10 +50,6 @@ export class OverlayManager {
         backgroundThrottling: false,
       },
     });
-
-    // Gibt Focus via setImmediate zurück: Chromium dispatcht Click-Events
-    // vollständig bevor blur() den Focus entzieht.
-    this.win.on('focus', () => { setImmediate(() => this.win?.blur()); });
 
     const htmlPath = this.findFile('overlay.html');
     this.win.loadFile(htmlPath);
