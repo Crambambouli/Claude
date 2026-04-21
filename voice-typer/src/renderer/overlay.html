@@ -256,10 +256,8 @@
 
 <script>
 'use strict';
-console.log('[overlay] Script startet');
 const { ipcRenderer } = require('electron');
 const { clipboard }   = require('electron');
-console.log('[overlay] ipcRenderer geladen:', typeof ipcRenderer);
 
 const recordBtn   = document.getElementById('recordBtn');
 const recordIcon  = document.getElementById('recordIcon');
@@ -337,7 +335,6 @@ ipcRenderer.on('update-state', (_e, { state, mode, lastText }) => {
 
 // ─── Aktionen ───────────────────────────────────────────────────────────────
 function toggleRecording() {
-  console.log('[overlay] toggleRecording geklickt');
   ipcRenderer.send('overlay-toggle-recording');
 }
 
