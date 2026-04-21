@@ -51,12 +51,9 @@ export class OverlayManager {
       },
     });
 
-    // Gibt Focus via setImmediate zurück – der Delay stellt sicher, dass
-    // Chromium den Click-Event noch dispatcht bevor das Fenster unscharf wird.
+    // Gibt Focus via setImmediate zurück: Chromium dispatcht Click-Events
+    // vollständig bevor blur() den Focus entzieht.
     this.win.on('focus', () => { setImmediate(() => this.win?.blur()); });
-
-    // screen-saver = höchste alwaysOnTop-Ebene auf Windows
-    this.win.setAlwaysOnTop(true, 'screen-saver');
 
     const htmlPath = this.findFile('overlay.html');
     this.win.loadFile(htmlPath);
