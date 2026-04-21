@@ -102,7 +102,7 @@ export class TtsManager {
 
     this.proc = spawn('powershell.exe', [
       '-NonInteractive', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', this.ps1Path,
-    ], { windowsHide: true });
+    ], { windowsHide: true, stdio: 'ignore' });
     this.proc.on('exit', () => { this.proc = null; this._isPaused = false; onDone?.(); });
 
     logger.info(`TTS gestartet: "${cleaned.slice(0, 60)}"`);
