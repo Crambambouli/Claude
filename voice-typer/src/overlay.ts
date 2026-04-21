@@ -51,10 +51,12 @@ export class OverlayManager {
       },
     });
 
-    // Gibt Focus sofort zurück – verhindert Focus-Diebstahl beim Klicken,
-    // sichert zuverlässige Maus-Event-Lieferung (focusable:false blockiert
-    // auf Windows unter bestimmten DWM-Zuständen alle Mouse-Events).
-    this.win.on('focus', () => { this.win?.blur(); });
+    // Gibt Focus via setImmediate zurück – der Delay stellt sicher, dass
+    // Chromium den Click-Event noch dispatcht bevor das Fenster unscharf wird.
+    this.win.on('focus', () => { setImmediate(() => this.win?.blur()); });
+
+    // screen-saver = höchste alwaysOnTop-Ebene auf Windows
+    this.win.setAlwaysOnTop(true, 'screen-saver');
 
     const htmlPath = this.findFile('overlay.html');
     this.win.loadFile(htmlPath);
