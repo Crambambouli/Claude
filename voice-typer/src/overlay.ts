@@ -52,6 +52,28 @@ export class OverlayManager {
     });
 
     const htmlPath = this.findFile('overlay.html');
+    logger.info(`Overlay HTML-Pfad: ${htmlPath} (existiert: ${fs.existsSync(htmlPath)})`);
+
+    this.win.webContents.on('did-finish-load', () =>
+      logger.info('Overlay: HTML geladen, Renderer läuft.'));
+
+    this.win.webContents.on('did-fail-load', (_e, code, desc) =>
+      logger.error(`Overlay: HTML-Load fehlgeschlagen – ${code} ${desc}`));
+
+    this.win.webContents.on('render-process-gone', (_e, details) =>
+      logger.error(`Overlay: Renderer abgestürzt – ${details.reason}`));
+
+    this.win.webContents.on('console-message', (_e, level, msg) =>
+      logger.info(`Overlay-Renderer [${level}]: ${msg}`));
+
+    // Bekannter Electron-Bug auf Windows: focusable:false setzt intern
+    // MA_NOACTIVATEANDEAT → Maus-Clicks werden "gegessen" und erreichen
+    // den Renderer nie. Explizites setIgnoreMouseEvents(false) überschreibt das.
+    this.win.setIgnoreMouseEvents(false);
+
+    // DevTools für Diagnose – nach Test entfernen
+    this.win.webContents.openDevTools({ mode: 'detach' });
+
     this.win.loadFile(htmlPath);
     this.win.on('closed', () => { this.win = null; });
     logger.info('Overlay-Fenster erstellt.');
