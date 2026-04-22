@@ -27,6 +27,18 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ---
 
+## Zusammenarbeit & Unterlagen — Quelle der Wahrheit ist das Repo
+
+**Alles Dauerhafte gehört ins Repo.** Claude hat **keinen** Zugriff auf Windows-Pfade (`C:\…`), OneDrive, lokale Notiz-Ordner oder externe Tools. Jedes Dokument außerhalb des Repos ist für Claude unsichtbar.
+
+- **Projektunterlagen** (Briefings, Konzepte, Handover, Deployment-Notizen, Architektur-Entscheidungen, Tabu-Listen, offene-Fragen-Listen) liegen als Markdown im Repo unter `docs/` — mit sprechenden Unterordnern wie `docs/handover/`, `docs/deployment/`, `docs/konzept/`, `docs/cadris/`.
+- **Keine Chat-Dumps großer Dokumente.** Statt einen Briefing-Inhalt in den Chat zu kopieren: Datei ins Repo committen, pushen, dann im Chat referenzieren („siehe `docs/handover/BRIEFING_LANDINGPAGE_DEPLOYMENT.md`"). So bleibt alles versioniert, diffbar und wiederauffindbar.
+- **Verweise auf `C:\…`-Pfade sind Sackgassen.** Wenn Claude eine Referenz darauf bekommt, fordert sie den Transfer ins Repo ein, bevor sie weiterarbeitet — besonders bei Deployment-, Security- oder Produktentscheidungen.
+- **Auch Credentials-Metadaten gehören dokumentiert** (welche Secrets existieren, wofür, wo im Workflow benutzt) — **niemals die Werte selbst**. Werte ausschließlich als GitHub Secrets.
+- **Neue Repos** (z.B. `crambambouli/cadris`) bekommen eine eigene `CLAUDE.md` mit denselben Prinzipien.
+
+---
+
 ## Projekt
 
 **Pfad:** `voice-typer/`  
