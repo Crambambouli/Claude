@@ -6,7 +6,7 @@ export type AppState  = 'idle' | 'recording' | 'processing';
 export interface Settings {
   /** Pfad zum whisper-CLI-Binary / Verzeichnis. Leer = PATH-Suche */
   whisperPath: string;
-  /** Whisper-Modell, z.B. "base", "small", "medium" */
+  /** Whisper-Modell, z.B. "small", "medium", "large-v3" */
   whisperModel: string;
   /** Sprache für Whisper, "auto" = automatisch */
   whisperLanguage: string;
@@ -24,8 +24,8 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   whisperPath:     '',
-  whisperModel:    'base',
-  whisperLanguage: 'auto',
+  whisperModel:    'large-v3',
+  whisperLanguage: 'de',
   apiKey:          '',
   hotkey:          'Ctrl+F8',
   audioDevice:     '',

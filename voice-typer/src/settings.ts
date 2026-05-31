@@ -4,6 +4,9 @@ import { app }   from 'electron';
 import { DEFAULT_SETTINGS, Settings } from './types';
 import { logger } from './logger';
 
+/** Aktuelle Config-Schema-Version (steuert einmalige Default-Migrationen). */
+const SCHEMA_VERSION = 1;
+
 export class SettingsManager {
   private data: Settings = { ...DEFAULT_SETTINGS };
   private filePath = '';
@@ -13,7 +16,7 @@ export class SettingsManager {
     try {
       if (fs.existsSync(this.filePath)) {
         const raw  = fs.readFileSync(this.filePath, 'utf8');
-        const parsed = JSON.parse(raw) as Partial<Settings>;
+        const parsed = JSON.parse(raw) as Partial<Settings> & { _schemaVersion?: number };
         this.data = { ...DEFAULT_SETTINGS, ...parsed };
         logger.info(`Settings geladen von: ${this.filePath}`);
 
@@ -21,9 +24,24 @@ export class SettingsManager {
         // anderer Apps und schließt dort Fenster. Automatisch auf Ctrl+F8 heben.
         if (this.data.hotkey === 'F8') {
           this.data.hotkey = 'Ctrl+F8';
-          this.save();
           logger.info('Hotkey-Migration: F8 → Ctrl+F8');
         }
+
+        // Einmalige Migration (über _schemaVersion gegated): alte Schwachstellen-
+        // Defaults base/auto auf die neuen, besseren Defaults heben. Eine spätere
+        // bewusste Nutzerwahl (z.B. wieder "base") bleibt dadurch erhalten.
+        if ((parsed._schemaVersion ?? 0) < 1) {
+          if (this.data.whisperModel === 'base') {
+            this.data.whisperModel = DEFAULT_SETTINGS.whisperModel;
+            logger.info(`Whisper-Modell-Migration: base → ${DEFAULT_SETTINGS.whisperModel}`);
+          }
+          if (this.data.whisperLanguage === 'auto') {
+            this.data.whisperLanguage = DEFAULT_SETTINGS.whisperLanguage;
+            logger.info(`Whisper-Sprache-Migration: auto → ${DEFAULT_SETTINGS.whisperLanguage}`);
+          }
+        }
+
+        this.save();
       } else {
         logger.info('Keine config.json gefunden, nutze Defaults.');
         this.save(); // Schreibe Defaults für den Nutzer
@@ -37,7 +55,8 @@ export class SettingsManager {
   save(): void {
     try {
       fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
-      fs.writeFileSync(this.filePath, JSON.stringify(this.data, null, 2), 'utf8');
+      const out = { ...this.data, _schemaVersion: SCHEMA_VERSION };
+      fs.writeFileSync(this.filePath, JSON.stringify(out, null, 2), 'utf8');
     } catch (err) {
       logger.error('Settings konnten nicht gespeichert werden.', err);
     }
