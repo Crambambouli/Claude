@@ -8,13 +8,23 @@ Wird automatisch von der App gestartet – nicht manuell aufrufen.
 import sys, os, json, tempfile, threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-def load_model(model_size, device='cpu'):
+def load_model(model_size):
     try:
         from faster_whisper import WhisperModel
-        print(f"[whisper-server] Lade faster-whisper '{model_size}'...", flush=True)
-        m = WhisperModel(model_size, device=device, compute_type='int8')
-        print(f"[whisper-server] Modell bereit.", flush=True)
-        return m, 'faster'
+
+        # GPU bevorzugen (device='cuda', float16); bei Fehler sauber auf CPU
+        # (int8) zurückfallen – z.B. wenn keine NVIDIA-GPU/CUDA vorhanden ist.
+        for device, compute_type in (('cuda', 'float16'), ('cpu', 'int8')):
+            try:
+                print(f"[whisper-server] Lade faster-whisper '{model_size}' "
+                      f"(device={device}, compute_type={compute_type})...", flush=True)
+                m = WhisperModel(model_size, device=device, compute_type=compute_type)
+                print(f"[whisper-server] Modell bereit auf {device.upper()}.", flush=True)
+                return m, 'faster'
+            except Exception as e:
+                print(f"[whisper-server] {device.upper()} nicht nutzbar: {e}", flush=True)
+                if device == 'cpu':
+                    raise
     except ImportError:
         pass
 

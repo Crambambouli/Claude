@@ -14,7 +14,14 @@ https://nodejs.org/
 ```bash
 # Python ≥ 3.9 erforderlich
 pip install faster-whisper
-# Das Modell wird beim ersten Start geladen (~150 MB für "base")
+# Das Modell wird beim ersten Start geladen (~3 GB für "large-v3")
+```
+
+**GPU-Beschleunigung (NVIDIA, empfohlen):** Der Server nutzt automatisch die
+GPU (`device='cuda'`, `float16`) und fällt sonst sauber auf CPU (`int8`) zurück.
+Dafür zusätzlich die CUDA-Laufzeitbibliotheken installieren:
+```bash
+pip install -U faster-whisper nvidia-cublas-cu12 nvidia-cudnn-cu12
 ```
 
 > **Alternativ**: `pip install openai-whisper` (wird als Fallback erkannt)  
@@ -111,8 +118,8 @@ voice-typer/
 | Key               | Default      | Beschreibung                            |
 |-------------------|--------------|-----------------------------------------|
 | `whisperPath`     | `""`         | Pfad zum Whisper-Binary / Verzeichnis (leer = Server-Modus) |
-| `whisperModel`    | `"base"`     | Whisper-Modell (tiny/base/small/medium) |
-| `whisperLanguage` | `"auto"`     | Sprache (auto/de/en/…)                  |
+| `whisperModel`    | `"large-v3"` | Whisper-Modell (tiny/base/small/medium/large-v3) |
+| `whisperLanguage` | `"de"`       | Sprache (auto/de/en/…)                  |
 | `apiKey`          | `""`         | Anthropic API Key                       |
 | `hotkey`          | `"Ctrl+F8"`  | Globaler Hotkey (Electron-Accelerator)  |
 | `audioDevice`     | `""`         | Mikrofon-Geräte-ID (leer = Standard)    |
