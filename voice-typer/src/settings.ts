@@ -1,6 +1,6 @@
-import * as fs   from 'fs';
+import * as fs from 'fs';
 import * as path from 'path';
-import { app }   from 'electron';
+import { app } from 'electron';
 import { DEFAULT_SETTINGS, Settings } from './types';
 import { logger } from './logger';
 
@@ -15,8 +15,10 @@ export class SettingsManager {
     this.filePath = path.join(app.getPath('userData'), 'config.json');
     try {
       if (fs.existsSync(this.filePath)) {
-        const raw  = fs.readFileSync(this.filePath, 'utf8');
-        const parsed = JSON.parse(raw) as Partial<Settings> & { _schemaVersion?: number };
+        const raw = fs.readFileSync(this.filePath, 'utf8');
+        const parsed = JSON.parse(raw) as Partial<Settings> & {
+          _schemaVersion?: number;
+        };
         this.data = { ...DEFAULT_SETTINGS, ...parsed };
         logger.info(`Settings geladen von: ${this.filePath}`);
 
@@ -33,11 +35,15 @@ export class SettingsManager {
         if ((parsed._schemaVersion ?? 0) < 1) {
           if (this.data.whisperModel === 'base') {
             this.data.whisperModel = DEFAULT_SETTINGS.whisperModel;
-            logger.info(`Whisper-Modell-Migration: base → ${DEFAULT_SETTINGS.whisperModel}`);
+            logger.info(
+              `Whisper-Modell-Migration: base → ${DEFAULT_SETTINGS.whisperModel}`,
+            );
           }
           if (this.data.whisperLanguage === 'auto') {
             this.data.whisperLanguage = DEFAULT_SETTINGS.whisperLanguage;
-            logger.info(`Whisper-Sprache-Migration: auto → ${DEFAULT_SETTINGS.whisperLanguage}`);
+            logger.info(
+              `Whisper-Sprache-Migration: auto → ${DEFAULT_SETTINGS.whisperLanguage}`,
+            );
           }
         }
 
@@ -81,5 +87,7 @@ export class SettingsManager {
     logger.info('Settings gespeichert.');
   }
 
-  getFilePath(): string { return this.filePath; }
+  getFilePath(): string {
+    return this.filePath;
+  }
 }
