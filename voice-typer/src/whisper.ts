@@ -68,7 +68,9 @@ function httpPostBuffer(
 // ─── WhisperService ───────────────────────────────────────────────────────────
 
 const SERVER_PORT    = 8765;
-const SERVER_STARTUP = 45_000;  // ms – Zeit für Modell-Download beim ersten Start
+// Großzügig: large-v3 (~3 GB) wird beim allerersten Start heruntergeladen.
+// Läuft im Hintergrund (warmUp), darf daher lange dauern.
+const SERVER_STARTUP = 600_000;  // ms – Zeit für Modell-Download beim ersten Start
 
 export class WhisperService {
   private whisperPath = '';
