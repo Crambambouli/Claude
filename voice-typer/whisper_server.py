@@ -76,7 +76,7 @@ class Handler(BaseHTTPRequestHandler):
     def _transcribe(self, path, lang):
         if Handler.model_type == 'faster':
             segs, _ = Handler.model.transcribe(
-                path, language=lang, beam_size=5,
+                path, language=lang, beam_size=1,
                 vad_filter=True,
                 vad_parameters=dict(min_silence_duration_ms=400, speech_pad_ms=200),
                 condition_on_previous_text=False,
