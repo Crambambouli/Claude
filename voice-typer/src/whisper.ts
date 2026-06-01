@@ -166,7 +166,12 @@ export class WhisperService {
   }
 
   private async ensureServer(): Promise<void> {
-    if (this.serverReady && await this.isServerAlive()) return;
+    // Server könnte nach warmUp-Timeout noch gestartet sein – erst /health prüfen
+    // bevor der laufende Prozess gekillt und neu gestartet wird.
+    if (await this.isServerAlive()) {
+      this.serverReady = true;
+      return;
+    }
 
     if (this.serverStarting) {
       await this.serverStarting;
