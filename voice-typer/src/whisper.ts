@@ -111,8 +111,9 @@ export class WhisperService {
       try {
         return await this.transcribeViaServer(audioBuffer);
       } catch (err) {
-        logger.warn('Server-Transkription fehlgeschlagen, Fallback auf CLI.', err);
+        // Im Server-Modus kein stiller CLI-Fallback – Fehler sofort melden.
         this.serverReady = false;
+        throw err;
       }
     }
     return this.transcribeViaCli(audioBuffer);

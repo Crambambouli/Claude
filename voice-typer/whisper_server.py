@@ -8,6 +8,21 @@ Wird automatisch von der App gestartet – nicht manuell aufrufen.
 import sys, os, json, tempfile, threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
+# Windows: Python 3.8+ lädt DLLs nicht mehr aus PATH.
+# CUDA-Bibliotheken aus den pip-Paketen explizit registrieren.
+if sys.platform == 'win32' and hasattr(os, 'add_dll_directory'):
+    for _pkg in ('nvidia.cublas', 'nvidia.cudnn', 'nvidia.cuda_runtime',
+                 'nvidia.cufft', 'nvidia.curand', 'nvidia.cusolver',
+                 'nvidia.cusparse', 'ctranslate2'):
+        try:
+            import importlib
+            _mod = importlib.import_module(_pkg)
+            _bin = os.path.join(os.path.dirname(_mod.__file__), 'bin')
+            if os.path.isdir(_bin):
+                os.add_dll_directory(_bin)
+        except Exception:
+            pass
+
 def load_model(model_size):
     try:
         from faster_whisper import WhisperModel
