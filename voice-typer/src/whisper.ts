@@ -169,7 +169,11 @@ export class WhisperService {
   // ─── Interne Methoden ─────────────────────────────────────────────────────
 
   private binaryPath(): string {
-    return path.join(process.resourcesPath ?? '', 'whisper-server.exe');
+    // Produktion: extraResources legt whisper-server.exe in process.resourcesPath
+    const prod = path.join(process.resourcesPath ?? '', 'whisper-server.exe');
+    if (fs.existsSync(prod)) return prod;
+    // Entwicklung: npm run setup legt whisper-server.exe in bin/ (Projekt-Root)
+    return path.join(__dirname, '..', 'bin', 'whisper-server.exe');
   }
 
   private async ensureServer(): Promise<void> {
