@@ -10,6 +10,8 @@
     "dev": "npm run build && electronmon dist/main.js",
     "watch": "tsc -w --preserveWatchOutput",
     "start": "electron dist/main.js",
+    "setup": "node scripts/download-whisper.mjs",
+    "prepackage": "node scripts/download-whisper.mjs",
     "package": "npm run build && electron-builder --win --x64",
     "clean": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\""
   },
@@ -38,8 +40,7 @@
       "package.json"
     ],
     "extraResources": [
-      { "from": "whisper_server.py", "to": "." },
-      { "from": "whisper_fast.py",   "to": "." }
+      { "from": "bin/whisper-server.exe", "to": "." }
     ],
     "win": {
       "target": [{ "target": "nsis", "arch": ["x64"] }],
