@@ -1,9 +1,9 @@
-import { spawnSync, spawn, ChildProcess } from 'child_process';
+import { spawn, ChildProcess } from 'child_process';
 import * as http from 'http';
 import * as fs   from 'fs';
 import * as path from 'path';
-import * as os   from 'os';
 import { logger } from './logger';
+import { ModelManager } from './model-manager';
 
 // ─── Halluzinations-Filter ───────────────────────────────────────────────────
 
@@ -29,29 +29,66 @@ export function stripHallucinations(text: string): string {
   return r.replace(/\n{2,}/g, '\n').trim();
 }
 
-// ─── HTTP-Helpers (nur Node-Builtins) ────────────────────────────────────────
+// ─── HTTP-Helpers ────────────────────────────────────────────────────────────
 
-function httpGetText(url: string, timeoutMs: number): Promise<string> {
+function httpGetJson(url: string, timeoutMs: number): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const req = http.get(url, (res) => {
       let d = '';
       res.on('data', c => d += c);
-      res.on('end', () => resolve(d));
+      res.on('end', () => {
+        try { resolve(JSON.parse(d)); }
+        catch { resolve({ _raw: d, _status: res.statusCode }); }
+      });
     });
     req.setTimeout(timeoutMs, () => { req.destroy(); reject(new Error('timeout')); });
     req.on('error', reject);
   });
 }
 
-function httpPostBuffer(
-  port: number, path: string,
-  body: Buffer, headers: Record<string, string>,
+function buildMultipart(
+  boundary: string,
+  wavBuffer: Buffer,
+  language: string,
+): Buffer {
+  const textField = (name: string, value: string): string =>
+    `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`;
+
+  const header =
+    `--${boundary}\r\n` +
+    `Content-Disposition: form-data; name="file"; filename="audio.wav"\r\n` +
+    `Content-Type: audio/wav\r\n\r\n`;
+  const footer =
+    `\r\n${textField('response_format', 'json')}` +
+    `${textField('language', language)}` +
+    `--${boundary}--\r\n`;
+
+  return Buffer.concat([
+    Buffer.from(header, 'utf8'),
+    wavBuffer,
+    Buffer.from(footer, 'utf8'),
+  ]);
+}
+
+function httpPostMultipart(
+  port: number,
+  urlPath: string,
+  body: Buffer,
+  boundary: string,
   timeoutMs: number,
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     const req = http.request(
-      { hostname: '127.0.0.1', port, path, method: 'POST',
-        headers: { 'Content-Length': body.length, ...headers } },
+      {
+        hostname: '127.0.0.1',
+        port,
+        path: urlPath,
+        method: 'POST',
+        headers: {
+          'Content-Type':   `multipart/form-data; boundary=${boundary}`,
+          'Content-Length': body.length,
+        },
+      },
       (res) => {
         let d = '';
         res.on('data', c => d += c);
@@ -68,67 +105,55 @@ function httpPostBuffer(
 // ─── WhisperService ───────────────────────────────────────────────────────────
 
 const SERVER_PORT    = 8765;
-// Großzügig: large-v3 (~3 GB) wird beim allerersten Start heruntergeladen.
-// Läuft im Hintergrund (warmUp), darf daher lange dauern.
-const SERVER_STARTUP = 600_000;  // ms – Zeit für Modell-Download beim ersten Start
+const SERVER_STARTUP = 120_000; // ms – Modell liegt auf Disk, kein Download beim Start
 
 export class WhisperService {
-  private whisperPath = '';
-  private model       = 'base';
-  private language    = 'auto';
+  // Rückwärtskompatible Felder – werden bei whisper.cpp nicht genutzt
+  private language = 'de';
 
-  // Server-Zustand
-  private serverProc:   ChildProcess | null = null;
-  private serverReady   = false;
+  private serverProc:     ChildProcess | null = null;
+  private serverReady     = false;
   private serverStarting: Promise<void> | null = null;
 
-  constructor(whisperPath: string, model = 'base', language = 'auto') {
-    this.whisperPath = whisperPath;
-    this.model       = model;
-    this.language    = language;
+  constructor(
+    _whisperPath: string,
+    _model = 'large-v3-q5_0',
+    language = 'de',
+  ) {
+    this.language = language || 'de';
   }
 
-  setPath(p: string):     void {
-    if (p !== this.whisperPath) {
-      this.whisperPath = p;
-      this.stopServer();   // Neustart mit neuer Konfiguration erzwingen
-    }
+  setPath(_p: string): void {
+    // whisper.cpp nutzt festen Binary-Pfad – kein Neustart nötig
   }
-  setModel(m: string):    void { this.model = m; this.stopServer(); }
-  setLanguage(l: string): void { this.language = l; }
 
-  // ─── Öffentliche API ───────────────────────────────────────────────────────
+  setModel(_m: string): void {
+    // Modell ist fest (large-v3-q5_0) – kein Neustart nötig
+  }
 
-  /** Startet den Server im Hintergrund (Modell ins RAM laden). */
+  setLanguage(l: string): void {
+    this.language = l || 'de';
+  }
+
   async warmUp(): Promise<void> {
-    if (!this.useServerMode()) return;
     await this.ensureServer();
   }
 
-  /** Transkribiert einen WAV-Buffer. Nutzt Server wenn möglich, sonst CLI. */
   async transcribe(audioBuffer: Buffer): Promise<string> {
-    if (this.useServerMode()) {
-      try {
-        return await this.transcribeViaServer(audioBuffer);
-      } catch (err) {
-        // Im Server-Modus kein stiller CLI-Fallback – Fehler sofort melden.
-        this.serverReady = false;
-        throw err;
-      }
-    }
-    return this.transcribeViaCli(audioBuffer);
+    return this.transcribeViaServer(audioBuffer);
   }
 
   checkInstallation(): { ok: boolean; message: string } {
-    const cmd = this.resolveCliCmd();
-    const res = spawnSync(cmd, ['--help'], { timeout: 5_000, encoding: 'utf8', windowsHide: true });
-    if (res.error || res.status === null) {
-      return { ok: false, message: `Whisper nicht gefunden: "${cmd}". pip install faster-whisper` };
+    const bin = this.binaryPath();
+    if (!fs.existsSync(bin)) {
+      return { ok: false, message: `whisper-server.exe nicht gefunden: ${bin}. Bitte "npm run setup" ausführen.` };
     }
-    return { ok: true, message: `Whisper gefunden: ${cmd}` };
+    if (!ModelManager.isDownloaded()) {
+      return { ok: false, message: `Whisper-Modell fehlt: ${ModelManager.modelPath()}` };
+    }
+    return { ok: true, message: `whisper.cpp bereit (${bin})` };
   }
 
-  /** Berechnet RMS-Energie eines WAV-Buffers (44-Byte-Header überspringen). */
   static rmsEnergy(wavBuffer: Buffer): number {
     if (wavBuffer.length <= 44) return 0;
     let sum = 0;
@@ -141,34 +166,13 @@ export class WhisperService {
 
   destroy(): void { this.stopServer(); }
 
-  // ─── Server-Modus ──────────────────────────────────────────────────────────
+  // ─── Interne Methoden ─────────────────────────────────────────────────────
 
-  /** Server-Modus aktiv wenn whisper_server.py konfiguriert oder kein Pfad. */
-  private useServerMode(): boolean {
-    // Immer Server-Modus (außer wenn explizit ein anderes Binary angegeben)
-    const p = this.whisperPath;
-    if (!p) return true;                    // Standard: server
-    if (p.endsWith('whisper_server.py')) return true;
-    if (p.endsWith('whisper_fast.py'))   return false;  // CLI-Wrapper
-    return false;
-  }
-
-  private serverScriptPath(): string {
-    const p = this.whisperPath;
-    if (p && p.endsWith('whisper_server.py')) return p;
-    // Standard-Pfad relativ zur App
-    const candidates = [
-      path.join(process.resourcesPath ?? '', 'whisper_server.py'),
-      path.join(__dirname, '..', 'whisper_server.py'),
-      path.join(__dirname, '..', '..', 'whisper_server.py'),
-    ];
-    return candidates.find(c => fs.existsSync(c))
-      ?? path.join(__dirname, '..', '..', 'whisper_server.py');
+  private binaryPath(): string {
+    return path.join(process.resourcesPath ?? '', 'whisper-server.exe');
   }
 
   private async ensureServer(): Promise<void> {
-    // Server könnte nach warmUp-Timeout noch gestartet sein – erst /health prüfen
-    // bevor der laufende Prozess gekillt und neu gestartet wird.
     if (await this.isServerAlive()) {
       this.serverReady = true;
       return;
@@ -187,51 +191,90 @@ export class WhisperService {
     }
   }
 
-  private async startServer(): Promise<void> {
-    this.stopServer();
+  private startServer(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.stopServer();
 
-    const script = this.serverScriptPath();
-    if (!fs.existsSync(script)) {
-      throw new Error(`whisper_server.py nicht gefunden: ${script}`);
-    }
+      const bin   = this.binaryPath();
+      const model = ModelManager.modelPath();
 
-    const python = process.platform === 'win32' ? 'python' : 'python3';
-    const lang   = this.language === 'auto' ? '' : this.language;
-    const args   = [script, this.model, String(SERVER_PORT), lang];
-
-    logger.info(`Starte Whisper-Server: ${python} ${args.join(' ')}`);
-
-    this.serverProc = spawn(python, args, {
-      stdio:       ['ignore', 'pipe', 'pipe'],
-      detached:    false,
-      windowsHide: true,
-    });
-
-    this.serverProc.stdout?.on('data', (d: Buffer) => logger.info(`[whisper-server] ${d.toString().trim()}`));
-    this.serverProc.stderr?.on('data', (d: Buffer) => logger.warn(`[whisper-server] ${d.toString().trim()}`));
-    this.serverProc.on('exit', (code) => {
-      logger.warn(`Whisper-Server beendet (Code ${code}).`);
-      this.serverReady = false;
-      this.serverProc  = null;
-    });
-
-    // Warten bis Server antwortet
-    const deadline = Date.now() + SERVER_STARTUP;
-    while (Date.now() < deadline) {
-      await sleep(500);
-      if (await this.isServerAlive()) {
-        this.serverReady = true;
-        logger.info('Whisper-Server bereit.');
+      if (!fs.existsSync(bin)) {
+        reject(new Error(`whisper-server.exe nicht gefunden: ${bin}. Bitte "npm run setup" ausführen.`));
         return;
       }
-    }
-    throw new Error('Whisper-Server hat nicht rechtzeitig geantwortet.');
+      if (!fs.existsSync(model)) {
+        reject(new Error(`Whisper-Modell nicht gefunden: ${model}. Modell fehlt oder wurde nicht heruntergeladen.`));
+        return;
+      }
+
+      const lang = this.language === 'auto' ? 'de' : this.language;
+      const args = [
+        '-m', model,
+        '--port', String(SERVER_PORT),
+        '--host', '127.0.0.1',
+        '-l', lang,
+        '-t', '4',
+        '--convert',
+      ];
+
+      logger.info(`Starte whisper.cpp-Server: ${bin} ${args.join(' ')}`);
+
+      const proc = spawn(bin, args, {
+        stdio:       ['ignore', 'pipe', 'pipe'],
+        detached:    false,
+        windowsHide: true,
+        shell:       false,
+      });
+
+      // ENOENT sofort ablehnen – nicht auf Timeout warten
+      proc.on('error', (err: NodeJS.ErrnoException) => {
+        this.serverProc  = null;
+        this.serverReady = false;
+        reject(new Error(
+          err.code === 'ENOENT'
+            ? `whisper-server.exe nicht gefunden: ${bin}`
+            : `Whisper-Server Fehler: ${err.message}`,
+        ));
+      });
+
+      proc.stdout?.on('data', (d: Buffer) => logger.info(`[whisper-server] ${d.toString().trim()}`));
+      proc.stderr?.on('data', (d: Buffer) => logger.warn(`[whisper-server] ${d.toString().trim()}`));
+
+      proc.on('exit', (code) => {
+        logger.warn(`Whisper-Server beendet (Code ${code}).`);
+        this.serverReady = false;
+        this.serverProc  = null;
+      });
+
+      this.serverProc = proc;
+
+      // Warten bis /health antwortet
+      const deadline = Date.now() + SERVER_STARTUP;
+      const poll = async (): Promise<void> => {
+        if (await this.isServerAlive()) {
+          this.serverReady = true;
+          logger.info('Whisper-Server (whisper.cpp) bereit.');
+          resolve();
+          return;
+        }
+        if (Date.now() >= deadline) {
+          this.stopServer();
+          reject(new Error('Whisper-Server hat nicht rechtzeitig geantwortet (120 s).'));
+          return;
+        }
+        setTimeout(() => { poll().catch(reject); }, 500);
+      };
+
+      // Kurze Verzögerung damit der Prozess starten kann, bevor wir pollen
+      setTimeout(() => { poll().catch(reject); }, 300);
+    });
   }
 
   private async isServerAlive(): Promise<boolean> {
     try {
-      const r = await httpGetText(`http://127.0.0.1:${SERVER_PORT}/health`, 1_000);
-      return r.trim() === 'ok';
+      const res = await httpGetJson(`http://127.0.0.1:${SERVER_PORT}/health`, 1_000) as Record<string, unknown>;
+      // Akzeptiere {"status":"ok"} oder jede 200-Antwort
+      return res['status'] === 'ok' || '_status' in res;
     } catch { return false; }
   }
 
@@ -246,78 +289,17 @@ export class WhisperService {
   private async transcribeViaServer(audioBuffer: Buffer): Promise<string> {
     await this.ensureServer();
 
-    const lang = this.language === 'auto' ? 'auto' : this.language;
-    const body = await httpPostBuffer(
-      SERVER_PORT, '/transcribe', audioBuffer,
-      { 'Content-Type': 'application/octet-stream', 'X-Language': lang },
-      60_000,
-    );
+    const lang     = this.language === 'auto' ? 'de' : this.language;
+    const boundary = `----BlitztextBoundary${Date.now()}`;
+    const body     = buildMultipart(boundary, audioBuffer, lang);
 
-    const json = JSON.parse(body) as { text?: string; error?: string };
+    const raw = await httpPostMultipart(SERVER_PORT, '/inference', body, boundary, 60_000);
+
+    const json = JSON.parse(raw) as { text?: string; error?: string };
     if (json.error) throw new Error(json.error);
-    const text = json.text?.trim() ?? '';
-    logger.info(`Server-Transkript: "${text}"`);
+
+    const text = (json.text ?? '').trim();
+    logger.info(`Transkript: "${text}"`);
     return text;
   }
-
-  // ─── CLI-Modus (Fallback) ─────────────────────────────────────────────────
-
-  private async transcribeViaCli(audioBuffer: Buffer): Promise<string> {
-    const tmpDir  = os.tmpdir();
-    const stamp   = Date.now();
-    const wavFile = path.join(tmpDir, `vt-audio-${stamp}.wav`);
-    const txtFile = path.join(tmpDir, `vt-audio-${stamp}.txt`);
-
-    try {
-      fs.writeFileSync(wavFile, audioBuffer);
-      const cmd  = this.resolveCliCmd();
-      const args = this.buildCliArgs(wavFile, tmpDir);
-      logger.info(`CLI: ${cmd} ${args.join(' ')}`);
-
-      const result = spawnSync(cmd, args, { timeout: 120_000, encoding: 'utf8', windowsHide: true, env: { ...process.env } });
-      if (result.error) throw result.error;
-      if ((result.status ?? 1) !== 0) {
-        throw new Error(`Whisper Fehlercode ${result.status}: ${result.stderr?.trim()}`);
-      }
-
-      if (fs.existsSync(txtFile)) return fs.readFileSync(txtFile, 'utf8').trim();
-      return result.stdout?.trim() ?? '';
-    } finally {
-      for (const f of [wavFile, txtFile]) {
-        try { if (fs.existsSync(f)) fs.unlinkSync(f); } catch { /* ignore */ }
-      }
-    }
-  }
-
-  private resolveCliCmd(): string {
-    const p = this.whisperPath;
-    if (!p) return process.platform === 'win32' ? 'whisper.exe' : 'whisper';
-    if (p.endsWith('.py')) return process.platform === 'win32' ? 'python' : 'python3';
-    if (fs.existsSync(p) && fs.statSync(p).isDirectory()) {
-      const w = path.join(p, 'whisper.exe');
-      return fs.existsSync(w) ? w : path.join(p, 'whisper');
-    }
-    return p;
-  }
-
-  private buildCliArgs(audioFile: string, outputDir: string): string[] {
-    const extra = this.whisperPath?.endsWith('.py') ? [this.whisperPath] : [];
-    const args = [
-      ...extra, audioFile,
-      '--model', this.model,
-      '--output_format', 'txt',
-      '--output_dir', outputDir,
-      '--task', 'transcribe',
-      '--condition_on_previous_text', 'False',
-      '--no_speech_threshold', '0.6',
-      '--logprob_threshold', '-1.0',
-      '--compression_ratio_threshold', '2.4',
-    ];
-    if (this.language && this.language !== 'auto') args.push('--language', this.language);
-    return args;
-  }
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise(r => setTimeout(r, ms));
 }

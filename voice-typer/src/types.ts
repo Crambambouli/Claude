@@ -4,9 +4,9 @@ export type Mode      = 'Normal' | 'Plus' | 'Rage' | 'Emoji';
 export type AppState  = 'idle' | 'recording' | 'processing';
 
 export interface Settings {
-  /** Pfad zum whisper-CLI-Binary / Verzeichnis. Leer = PATH-Suche */
+  /** Reserviert – wird von whisper.cpp nicht ausgewertet (Binary-Pfad ist fest). Leer lassen. */
   whisperPath: string;
-  /** Whisper-Modell, z.B. "small", "medium", "large-v3" */
+  /** Whisper-Modell-Kennung, z.B. "large-v3-q5_0" (whisper.cpp ggml-Format) */
   whisperModel: string;
   /** Sprache für Whisper, "auto" = automatisch */
   whisperLanguage: string;
@@ -24,7 +24,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   whisperPath:     '',
-  whisperModel:    'large-v3',
+  whisperModel:    'large-v3-q5_0',
   whisperLanguage: 'de',
   apiKey:          '',
   hotkey:          'Ctrl+F8',
