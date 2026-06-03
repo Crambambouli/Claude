@@ -9,6 +9,7 @@ import { OverlayManager }     from './overlay';
 import { HotkeyManager }      from './hotkey';
 import { AudioRecorder }      from './audio-recorder';
 import { WhisperService, stripHallucinations } from './whisper';
+import { ModelManager }                        from './model-manager';
 import { ModeProcessor }      from './modes';
 import { ClipboardManager }   from './clipboard-manager';
 import { TtsManager }         from './tts-manager';
@@ -106,10 +107,17 @@ class VoiceTyper {
     logger.info('VoiceTyper bereit.');
     this.notify('Blitztext gestartet', `Hotkey: ${s.hotkey || 'Ctrl+F8'} – Modus: ${this.currentMode}`);
 
-    // Whisper-Server im Hintergrund vorwärmen (Modell ins RAM laden)
-    this.whisper.warmUp().catch(err =>
-      logger.warn('Whisper-Server Warm-Up fehlgeschlagen.', err)
-    );
+    // Modell sicherstellen, dann Whisper-Server vorwärmen
+    ModelManager.ensureModel((pct) => {
+      if (pct % 10 === 0) logger.info(`Whisper-Modell Download: ${pct}%`);
+    }).then(() => {
+      this.whisper.warmUp().catch(err =>
+        logger.warn('Whisper-Server Warm-Up fehlgeschlagen.', err)
+      );
+    }).catch(err => {
+      logger.error('Whisper-Modell-Download fehlgeschlagen:', err);
+      this.notify('Blitztext – Fehler', `Whisper-Modell konnte nicht geladen werden:\n${String(err)}`);
+    });
   }
 
   // ─── IPC ──────────────────────────────────────────────────────────────────
