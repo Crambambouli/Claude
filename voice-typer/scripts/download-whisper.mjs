@@ -158,24 +158,30 @@ function listZipEntries(data, cdOffset, cdEntries) {
 // ─── Asset-Auswahl ────────────────────────────────────────────────────────────
 
 function pickAsset(assets) {
-  const lower = (s) => s.toLowerCase();
+  const n = (a) => a.name.toLowerCase();
+  const isZip = (a) => a.name.endsWith('.zip');
+  const notMac = (a) => !n(a).includes('xcframework') && !n(a).includes('.jar') && !n(a).includes('win32');
 
-  // Bevorzuge: win + x64 + vulkan
-  const vulkan = assets.find(a =>
-    lower(a.name).includes('win') &&
-    lower(a.name).includes('x64') &&
-    lower(a.name).includes('vulkan') &&
-    a.name.endsWith('.zip'),
-  );
+  // 1. Vulkan + x64 (GPU ohne CUDA-Toolkit, z.B. neuere Releases)
+  const vulkan = assets.find(a => isZip(a) && n(a).includes('vulkan') && n(a).includes('x64'));
   if (vulkan) return vulkan;
 
-  // Fallback: win + x64 ohne Vulkan
+  // 2. Nur x64 (kein BLAS, kein CUDA) – komplett standalone, v1.8.x: "whisper-bin-x64.zip"
   const plain = assets.find(a =>
-    lower(a.name).includes('win') &&
-    lower(a.name).includes('x64') &&
-    a.name.endsWith('.zip'),
+    isZip(a) && notMac(a) && n(a).includes('x64') &&
+    !n(a).includes('blas') && !n(a).includes('cublas') && !n(a).includes('cuda'),
   );
   if (plain) return plain;
+
+  // 3. BLAS + x64 (CPU-Beschleunigung)
+  const blas = assets.find(a => isZip(a) && notMac(a) && n(a).includes('blas') && n(a).includes('x64') && !n(a).includes('cublas'));
+  if (blas) return blas;
+
+  // 4. CUDA + x64 (neuere Version bevorzugen)
+  const cuda = assets
+    .filter(a => isZip(a) && notMac(a) && (n(a).includes('cublas') || n(a).includes('cuda')) && n(a).includes('x64'))
+    .sort((a, b) => b.name.localeCompare(a.name))[0];
+  if (cuda) return cuda;
 
   return null;
 }
@@ -212,8 +218,31 @@ async function main() {
   console.log(`Lade herunter → ${zipPath}`);
   await downloadFile(asset.browser_download_url, zipPath);
 
-  console.log('Extrahiere whisper-server.exe …');
-  await extractExeFromZip(zipPath, 'whisper-server.exe', DEST);
+  // whisper-server.exe suchen; ältere Releases nennen es ggf. anders
+  const CANDIDATES = ['whisper-server.exe', 'server.exe', 'main.exe', 'whisper.exe'];
+  let extracted = false;
+  for (const candidate of CANDIDATES) {
+    try {
+      console.log(`Extrahiere ${candidate} …`);
+      await extractExeFromZip(zipPath, candidate, DEST);
+      extracted = true;
+      break;
+    } catch (e) {
+      if (!e.message.includes('nicht in ZIP gefunden')) throw e;
+    }
+  }
+  if (!extracted) {
+    // Liste was im ZIP ist und breche ab
+    const data = fs.readFileSync(zipPath);
+    let eocdOffset = -1;
+    for (let i = data.length - 22; i >= 0; i--) {
+      if (data.readUInt32LE(i) === 0x06054b50) { eocdOffset = i; break; }
+    }
+    const cdOffset = data.readUInt32LE(eocdOffset + 16);
+    const cdEntries = data.readUInt16LE(eocdOffset + 8);
+    fs.unlinkSync(zipPath);
+    throw new Error(`Kein Server-Binary im ZIP gefunden. Inhalt:\n${listZipEntries(data, cdOffset, cdEntries)}`);
+  }
 
   fs.unlinkSync(zipPath);
   console.log(`whisper-server.exe bereit: ${DEST}`);
