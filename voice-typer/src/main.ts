@@ -108,7 +108,7 @@ class VoiceTyper {
     this.notify('Blitztext gestartet', `Hotkey: ${s.hotkey || 'Ctrl+F8'} – Modus: ${this.currentMode}`);
 
     // Modell sicherstellen, dann Whisper-Server vorwärmen
-    ModelManager.ensureModel(s.whisperModel, (pct) => {
+    ModelManager.ensureModel(s.whisperModel || 'small', (pct) => {
       if (pct % 10 === 0) logger.info(`Whisper-Modell Download: ${pct}%`);
     }).then(() => {
       this.whisper.warmUp().catch(err =>
