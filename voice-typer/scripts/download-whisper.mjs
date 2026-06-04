@@ -154,27 +154,32 @@ function pickAsset(assets) {
   const n = (a) => a.name.toLowerCase();
   const isZip = (a) => a.name.endsWith('.zip');
   const notMac = (a) => !n(a).includes('xcframework') && !n(a).includes('.jar') && !n(a).includes('win32');
+  const x64 = (a) => n(a).includes('x64');
 
-  // 1. Vulkan + x64 (GPU ohne CUDA-Toolkit, z.B. neuere Releases)
-  const vulkan = assets.find(a => isZip(a) && n(a).includes('vulkan') && n(a).includes('x64'));
+  // 1. Vulkan + x64 (GPU, kein CUDA-Toolkit nötig)
+  const vulkan = assets.find(a => isZip(a) && notMac(a) && x64(a) && n(a).includes('vulkan'));
   if (vulkan) return vulkan;
 
-  // 2. Nur x64 (kein BLAS, kein CUDA) – komplett standalone, v1.8.x: "whisper-bin-x64.zip"
+  // 2. CUBLAS 12.x + x64 (NVIDIA GPU, CUDA 12 – neueste Version bevorzugen)
+  const cuda12 = assets
+    .filter(a => isZip(a) && notMac(a) && x64(a) && n(a).includes('cublas') && n(a).includes('12'))
+    .sort((a, b) => b.name.localeCompare(a.name))[0];
+  if (cuda12) return cuda12;
+
+  // 3. CUBLAS 11.x + x64 (NVIDIA GPU, älterer Treiber)
+  const cuda11 = assets.find(a => isZip(a) && notMac(a) && x64(a) && n(a).includes('cublas'));
+  if (cuda11) return cuda11;
+
+  // 4. BLAS + x64 (optimierte CPU-Version, kein GPU)
+  const blas = assets.find(a => isZip(a) && notMac(a) && x64(a) && n(a).includes('blas') && !n(a).includes('cublas'));
+  if (blas) return blas;
+
+  // 5. Plain x64 (CPU, keine Beschleunigung – letzter Ausweg)
   const plain = assets.find(a =>
-    isZip(a) && notMac(a) && n(a).includes('x64') &&
+    isZip(a) && notMac(a) && x64(a) &&
     !n(a).includes('blas') && !n(a).includes('cublas') && !n(a).includes('cuda'),
   );
   if (plain) return plain;
-
-  // 3. BLAS + x64 (CPU-Beschleunigung)
-  const blas = assets.find(a => isZip(a) && notMac(a) && n(a).includes('blas') && n(a).includes('x64') && !n(a).includes('cublas'));
-  if (blas) return blas;
-
-  // 4. CUDA + x64 (neuere Version bevorzugen)
-  const cuda = assets
-    .filter(a => isZip(a) && notMac(a) && (n(a).includes('cublas') || n(a).includes('cuda')) && n(a).includes('x64'))
-    .sort((a, b) => b.name.localeCompare(a.name))[0];
-  if (cuda) return cuda;
 
   return null;
 }
