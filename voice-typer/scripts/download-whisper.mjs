@@ -219,16 +219,19 @@ async function main() {
   await downloadFile(asset.browser_download_url, zipPath);
 
   // whisper-server.exe suchen; ältere Releases nennen es ggf. anders
+  // WICHTIG: server.exe ist das HTTP-Server-Binary; main.exe ist das CLI-Tool (nur Notfall-Fallback)
   const CANDIDATES = ['whisper-server.exe', 'server.exe', 'main.exe', 'whisper.exe'];
   let extracted = false;
+  let extractedName = '';
   for (const candidate of CANDIDATES) {
     try {
-      console.log(`Extrahiere ${candidate} …`);
       await extractExeFromZip(zipPath, candidate, DEST);
       extracted = true;
+      extractedName = candidate;
       break;
     } catch (e) {
       if (!e.message.includes('nicht in ZIP gefunden')) throw e;
+      console.log(`  ${candidate} nicht im ZIP – versuche nächsten Kandidaten …`);
     }
   }
   if (!extracted) {
@@ -246,6 +249,12 @@ async function main() {
 
   fs.unlinkSync(zipPath);
   console.log(`whisper-server.exe bereit: ${DEST}`);
+  if (extractedName !== 'whisper-server.exe' && extractedName !== 'server.exe') {
+    console.warn(`WARNUNG: Extrahiertes Binary war '${extractedName}' (CLI-Tool, kein HTTP-Server).`);
+    console.warn(`Die App benötigt ein HTTP-Server-Binary. Prüfe ob 'server.exe' in ${asset.name} enthalten ist.`);
+  } else {
+    console.log(`Extrahiertes Binary: ${extractedName} → whisper-server.exe`);
+  }
   console.log('=== Setup abgeschlossen ===');
 }
 

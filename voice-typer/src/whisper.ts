@@ -218,7 +218,6 @@ export class WhisperService {
         '--host', '127.0.0.1',
         '-l', lang,
         '-t', '4',
-        '--convert',
       ];
 
       logger.info(`Starte whisper.cpp-Server: ${bin} ${args.join(' ')}`);
@@ -241,13 +240,33 @@ export class WhisperService {
         ));
       });
 
-      proc.stdout?.on('data', (d: Buffer) => logger.info(`[whisper-server] ${d.toString().trim()}`));
-      proc.stderr?.on('data', (d: Buffer) => logger.warn(`[whisper-server] ${d.toString().trim()}`));
+      const startedAt = Date.now();
+      let serverOutput = '';
+
+      proc.stdout?.on('data', (d: Buffer) => {
+        const line = d.toString().trim();
+        serverOutput += line + '\n';
+        logger.info(`[whisper-server] ${line}`);
+      });
+      proc.stderr?.on('data', (d: Buffer) => {
+        const line = d.toString().trim();
+        serverOutput += line + '\n';
+        logger.warn(`[whisper-server] ${line}`);
+      });
 
       proc.on('exit', (code) => {
-        logger.warn(`Whisper-Server beendet (Code ${code}).`);
+        const uptime = Date.now() - startedAt;
+        logger.warn(`Whisper-Server beendet (Code ${code}, Laufzeit ${uptime} ms).`);
         this.serverReady = false;
         this.serverProc  = null;
+        // Sofort ablehnen wenn der Prozess sehr früh beendet (falsches Binary / falscher Flag)
+        if (uptime < 10_000) {
+          reject(new Error(
+            `Whisper-Server beendete sich nach ${uptime} ms (Code ${code}). ` +
+            `Möglicherweise falsches Binary oder Argument-Fehler.\n` +
+            `Ausgabe: ${serverOutput.slice(0, 500) || '(keine)'}`,
+          ));
+        }
       });
 
       this.serverProc = proc;
@@ -255,6 +274,7 @@ export class WhisperService {
       // Warten bis /health antwortet
       const deadline = Date.now() + SERVER_STARTUP;
       const poll = async (): Promise<void> => {
+        if (!this.serverProc) return; // Prozess bereits beendet – exit-Handler übernimmt
         if (await this.isServerAlive()) {
           this.serverReady = true;
           logger.info('Whisper-Server (whisper.cpp) bereit.');
@@ -263,7 +283,7 @@ export class WhisperService {
         }
         if (Date.now() >= deadline) {
           this.stopServer();
-          reject(new Error('Whisper-Server hat nicht rechtzeitig geantwortet (120 s).'));
+          reject(new Error(`Whisper-Server hat nicht rechtzeitig geantwortet (120 s).\nAusgabe: ${serverOutput.slice(0, 500) || '(keine)'}`));
           return;
         }
         setTimeout(() => { poll().catch(reject); }, 500);
