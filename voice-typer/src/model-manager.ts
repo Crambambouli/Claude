@@ -23,7 +23,8 @@ const MODEL_MAP: Record<string, string> = {
 
 export class ModelManager {
   static filename(model: string): string {
-    return MODEL_MAP[model] ?? `ggml-${model}.bin`;
+    const m = model || 'small';
+    return MODEL_MAP[m] ?? `ggml-${m}.bin`;
   }
 
   static modelPath(model: string): string {
@@ -37,13 +38,14 @@ export class ModelManager {
   }
 
   static async ensureModel(model: string, onProgress?: (pct: number) => void): Promise<void> {
-    if (ModelManager.isDownloaded(model)) return;
+    const m = model || 'small';
+    if (ModelManager.isDownloaded(m)) return;
 
-    const dest = ModelManager.modelPath(model);
+    const dest = ModelManager.modelPath(m);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
 
-    const url = HF_BASE + ModelManager.filename(model);
-    logger.info(`Lade Whisper-Modell "${model}" herunter: ${url}`);
+    const url = HF_BASE + ModelManager.filename(m);
+    logger.info(`Lade Whisper-Modell "${m}" herunter: ${url}`);
     await downloadWithRedirects(url, dest, MAX_REDIRECTS, onProgress);
     logger.info(`Modell gespeichert: ${dest}`);
   }
