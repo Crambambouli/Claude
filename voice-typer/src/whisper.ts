@@ -50,6 +50,7 @@ function buildMultipart(
   boundary: string,
   wavBuffer: Buffer,
   language: string,
+  prompt: string,
 ): Buffer {
   const textField = (name: string, value: string): string =>
     `--${boundary}\r\nContent-Disposition: form-data; name="${name}"\r\n\r\n${value}\r\n`;
@@ -58,10 +59,11 @@ function buildMultipart(
     `--${boundary}\r\n` +
     `Content-Disposition: form-data; name="file"; filename="audio.wav"\r\n` +
     `Content-Type: audio/wav\r\n\r\n`;
-  const footer =
+  let footer =
     `\r\n${textField('response_format', 'json')}` +
-    `${textField('language', language)}` +
-    `--${boundary}--\r\n`;
+    `${textField('language', language)}`;
+  if (prompt) footer += textField('initial_prompt', prompt);
+  footer += `--${boundary}--\r\n`;
 
   return Buffer.concat([
     Buffer.from(header, 'utf8'),
@@ -110,6 +112,7 @@ const SERVER_STARTUP = 120_000; // ms – Modell liegt auf Disk, kein Download b
 export class WhisperService {
   private language = 'de';
   private model    = 'small';
+  private prompt   = '';
 
   private serverProc:     ChildProcess | null = null;
   private serverReady     = false;
@@ -119,9 +122,11 @@ export class WhisperService {
     _whisperPath: string,
     model = 'small',
     language = 'de',
+    prompt = '',
   ) {
     this.model    = model || 'small';
     this.language = language || 'de';
+    this.prompt   = prompt ?? '';
   }
 
   setPath(_p: string): void {}
@@ -135,6 +140,10 @@ export class WhisperService {
 
   setLanguage(l: string): void {
     this.language = l || 'de';
+  }
+
+  setPrompt(p: string): void {
+    this.prompt = p ?? '';
   }
 
   async warmUp(): Promise<void> {
@@ -315,9 +324,9 @@ export class WhisperService {
   private async transcribeViaServer(audioBuffer: Buffer): Promise<string> {
     await this.ensureServer();
 
-    const lang     = this.language === 'auto' ? 'de' : this.language;
+    const lang     = this.language === 'auto' ? '' : this.language;
     const boundary = `----BlitztextBoundary${Date.now()}`;
-    const body     = buildMultipart(boundary, audioBuffer, lang);
+    const body     = buildMultipart(boundary, audioBuffer, lang, this.prompt);
 
     const raw = await httpPostMultipart(SERVER_PORT, '/inference', body, boundary, 60_000);
 

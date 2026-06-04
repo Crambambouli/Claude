@@ -10,6 +10,8 @@ export interface Settings {
   whisperModel: string;
   /** Sprache für Whisper, "auto" = automatisch */
   whisperLanguage: string;
+  /** Fachbegriffe als Kontext-Hinweis für whisper.cpp (kommagetrennt oder freier Text) */
+  whisperPrompt: string;
   /** Anthropic-API-Schlüssel für Modi Plus/Rage/Emoji */
   apiKey: string;
   /** Globaler Hotkey, z.B. "Ctrl+F8" */
@@ -25,6 +27,7 @@ export interface Settings {
 export const DEFAULT_SETTINGS: Settings = {
   whisperPath:     '',
   whisperModel:    'small',
+  whisperPrompt:   '',
   whisperLanguage: 'de',
   apiKey:          '',
   hotkey:          'Ctrl+F8',

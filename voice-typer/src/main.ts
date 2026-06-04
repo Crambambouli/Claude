@@ -62,7 +62,7 @@ class VoiceTyper {
     this.modes = new ModeProcessor();
     this.modes.setApiKey(s.apiKey);
 
-    this.whisper = new WhisperService(s.whisperPath, s.whisperModel, s.whisperLanguage);
+    this.whisper = new WhisperService(s.whisperPath, s.whisperModel, s.whisperLanguage, s.whisperPrompt);
 
     this.recorder  = new AudioRecorder();
     this.recorder.init();
@@ -134,6 +134,7 @@ class VoiceTyper {
       if (partial.whisperPath !== undefined) this.whisper.setPath(next.whisperPath);
       if (partial.whisperModel !== undefined) this.whisper.setModel(next.whisperModel);
       if (partial.whisperLanguage !== undefined) this.whisper.setLanguage(next.whisperLanguage);
+      if (partial.whisperPrompt   !== undefined) this.whisper.setPrompt(next.whisperPrompt);
       if (partial.hotkey && partial.hotkey !== prev.hotkey) {
         this.hotkey.reregister(next.hotkey);
       }
