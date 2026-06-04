@@ -87,10 +87,7 @@ async function downloadFile(url, dest) {
 
 // ─── ZIP-Extraktion ───────────────────────────────────────────────────────────
 
-async function extractExeFromZip(zipPath, exeName, outputPath) {
-  // Minimaler ZIP-Parser: suche Local-File-Header für exeName
-  const data = fs.readFileSync(zipPath);
-
+function parseZipEntries(data) {
   // End-of-central-directory (EOCD) Signatur: 0x06054b50
   let eocdOffset = -1;
   for (let i = data.length - 22; i >= 0; i--) {
@@ -98,61 +95,57 @@ async function extractExeFromZip(zipPath, exeName, outputPath) {
   }
   if (eocdOffset === -1) throw new Error('Kein ZIP-EOCD gefunden.');
 
-  const cdOffset = data.readUInt32LE(eocdOffset + 16);
+  const cdOffset  = data.readUInt32LE(eocdOffset + 16);
   const cdEntries = data.readUInt16LE(eocdOffset + 8);
 
-  let cdPos = cdOffset;
-  for (let i = 0; i < cdEntries; i++) {
-    if (data.readUInt32LE(cdPos) !== 0x02014b50) throw new Error('Ungültiger Central-Directory-Eintrag.');
-
-    const compMethod    = data.readUInt16LE(cdPos + 10);
-    const compSize      = data.readUInt32LE(cdPos + 20);
-    const uncompSize    = data.readUInt32LE(cdPos + 24);
-    const fnLen         = data.readUInt16LE(cdPos + 28);
-    const extraLen      = data.readUInt16LE(cdPos + 30);
-    const commentLen    = data.readUInt16LE(cdPos + 32);
-    const localOffset   = data.readUInt32LE(cdPos + 42);
-    const filename      = data.slice(cdPos + 46, cdPos + 46 + fnLen).toString('utf8');
-
-    if (path.basename(filename).toLowerCase() === exeName.toLowerCase()) {
-      // Local-File-Header lesen
-      const lfhExtraLen = data.readUInt16LE(localOffset + 28);
-      const dataStart   = localOffset + 30 + fnLen + lfhExtraLen;
-      const compressed  = data.slice(dataStart, dataStart + compSize);
-
-      if (compMethod === 0) {
-        // Stored (keine Komprimierung)
-        fs.writeFileSync(outputPath, compressed.slice(0, uncompSize));
-      } else if (compMethod === 8) {
-        // Deflate
-        const inflated = zlib.inflateRawSync(compressed);
-        fs.writeFileSync(outputPath, inflated);
-      } else {
-        throw new Error(`Nicht unterstützte ZIP-Komprimierung: ${compMethod}`);
-      }
-
-      console.log(`  Extrahiert: ${filename} → ${outputPath}`);
-      return;
-    }
-
-    cdPos += 46 + fnLen + extraLen + commentLen;
-  }
-
-  throw new Error(`${exeName} nicht in ZIP gefunden. Verfügbare Dateien:\n${listZipEntries(data, cdOffset, cdEntries)}`);
-}
-
-function listZipEntries(data, cdOffset, cdEntries) {
-  const names = [];
+  const entries = [];
   let pos = cdOffset;
   for (let i = 0; i < cdEntries; i++) {
-    if (data.readUInt32LE(pos) !== 0x02014b50) break;
-    const fnLen     = data.readUInt16LE(pos + 28);
-    const extraLen  = data.readUInt16LE(pos + 30);
-    const commentLen = data.readUInt16LE(pos + 32);
-    names.push(data.slice(pos + 46, pos + 46 + fnLen).toString('utf8'));
+    if (data.readUInt32LE(pos) !== 0x02014b50) throw new Error('Ungültiger Central-Directory-Eintrag.');
+    const compMethod  = data.readUInt16LE(pos + 10);
+    const compSize    = data.readUInt32LE(pos + 20);
+    const uncompSize  = data.readUInt32LE(pos + 24);
+    const fnLen       = data.readUInt16LE(pos + 28);
+    const extraLen    = data.readUInt16LE(pos + 30);
+    const commentLen  = data.readUInt16LE(pos + 32);
+    const localOffset = data.readUInt32LE(pos + 42);
+    const filename    = data.slice(pos + 46, pos + 46 + fnLen).toString('utf8');
+    entries.push({ filename, compMethod, compSize, uncompSize, localOffset, fnLen });
     pos += 46 + fnLen + extraLen + commentLen;
   }
-  return names.join('\n');
+  return entries;
+}
+
+function extractEntry(data, entry, destPath) {
+  const { localOffset, fnLen, compMethod, compSize, uncompSize } = entry;
+  const lfhExtraLen = data.readUInt16LE(localOffset + 28);
+  const dataStart   = localOffset + 30 + fnLen + lfhExtraLen;
+  const compressed  = data.slice(dataStart, dataStart + compSize);
+
+  if (compMethod === 0) {
+    fs.writeFileSync(destPath, compressed.slice(0, uncompSize));
+  } else if (compMethod === 8) {
+    fs.writeFileSync(destPath, zlib.inflateRawSync(compressed));
+  } else {
+    throw new Error(`Nicht unterstützte ZIP-Komprimierung: ${compMethod}`);
+  }
+}
+
+// Extrahiert alle Dateien aus dem ZIP in destDir (flach, ohne Unterverzeichnisse)
+function extractAllFromZip(zipPath, destDir) {
+  const data    = fs.readFileSync(zipPath);
+  const entries = parseZipEntries(data);
+  const names   = [];
+
+  for (const entry of entries) {
+    const base = path.basename(entry.filename);
+    if (!base || base.endsWith('/') || entry.uncompSize === 0) continue; // Verzeichnisse überspringen
+    const dest = path.join(destDir, base);
+    extractEntry(data, entry, dest);
+    console.log(`  Extrahiert: ${entry.filename}`);
+    names.push(base);
+  }
+  return names;
 }
 
 // ─── Asset-Auswahl ────────────────────────────────────────────────────────────
@@ -192,9 +185,15 @@ async function main() {
   console.log('=== whisper.cpp Setup ===');
 
   if (fs.existsSync(DEST)) {
-    console.log(`whisper-server.exe bereits vorhanden: ${DEST}`);
-    console.log('Setup abgeschlossen (kein Download nötig).');
-    return;
+    // Prüfen ob die vorhandene Datei lauffähig ist (Mindestgröße > 100 KB)
+    const size = fs.statSync(DEST).size;
+    if (size > 100_000) {
+      console.log(`whisper-server.exe bereits vorhanden (${(size / 1_048_576).toFixed(1)} MB): ${DEST}`);
+      console.log('Setup abgeschlossen (kein Download nötig). Für Neuinstallation: bin\\-Ordner löschen.');
+      return;
+    }
+    console.log(`whisper-server.exe vorhanden aber zu klein (${size} Bytes) – wird neu heruntergeladen.`);
+    fs.rmSync(BIN_DIR, { recursive: true, force: true });
   }
 
   console.log(`Hole neueste Release-Informationen von ${API_URL} …`);
@@ -218,43 +217,32 @@ async function main() {
   console.log(`Lade herunter → ${zipPath}`);
   await downloadFile(asset.browser_download_url, zipPath);
 
-  // whisper-server.exe suchen; ältere Releases nennen es ggf. anders
-  // WICHTIG: server.exe ist das HTTP-Server-Binary; main.exe ist das CLI-Tool (nur Notfall-Fallback)
-  const CANDIDATES = ['whisper-server.exe', 'server.exe', 'main.exe', 'whisper.exe'];
-  let extracted = false;
-  let extractedName = '';
-  for (const candidate of CANDIDATES) {
-    try {
-      await extractExeFromZip(zipPath, candidate, DEST);
-      extracted = true;
-      extractedName = candidate;
-      break;
-    } catch (e) {
-      if (!e.message.includes('nicht in ZIP gefunden')) throw e;
-      console.log(`  ${candidate} nicht im ZIP – versuche nächsten Kandidaten …`);
-    }
+  // Alle Dateien aus dem ZIP extrahieren (inkl. benötigte DLLs)
+  console.log('Extrahiere alle Dateien (EXE + DLLs) …');
+  const extracted = extractAllFromZip(zipPath, BIN_DIR);
+  fs.unlinkSync(zipPath);
+
+  if (extracted.length === 0) throw new Error('ZIP enthielt keine extrahierbaren Dateien.');
+  console.log(`${extracted.length} Datei(en) extrahiert: ${extracted.join(', ')}`);
+
+  // Server-Binary als whisper-server.exe bereitstellen
+  const SERVER_CANDIDATES = ['server.exe', 'whisper-server.exe', 'main.exe'];
+  let serverBin = '';
+  for (const c of SERVER_CANDIDATES) {
+    if (extracted.map(n => n.toLowerCase()).includes(c)) { serverBin = c; break; }
   }
-  if (!extracted) {
-    // Liste was im ZIP ist und breche ab
-    const data = fs.readFileSync(zipPath);
-    let eocdOffset = -1;
-    for (let i = data.length - 22; i >= 0; i--) {
-      if (data.readUInt32LE(i) === 0x06054b50) { eocdOffset = i; break; }
-    }
-    const cdOffset = data.readUInt32LE(eocdOffset + 16);
-    const cdEntries = data.readUInt16LE(eocdOffset + 8);
-    fs.unlinkSync(zipPath);
-    throw new Error(`Kein Server-Binary im ZIP gefunden. Inhalt:\n${listZipEntries(data, cdOffset, cdEntries)}`);
+  if (!serverBin) throw new Error(`Kein Server-Binary gefunden. Inhalt: ${extracted.join(', ')}`);
+
+  if (serverBin !== 'whisper-server.exe') {
+    fs.copyFileSync(path.join(BIN_DIR, serverBin), DEST);
+    console.log(`${serverBin} → whisper-server.exe`);
   }
 
-  fs.unlinkSync(zipPath);
-  console.log(`whisper-server.exe bereit: ${DEST}`);
-  if (extractedName !== 'whisper-server.exe' && extractedName !== 'server.exe') {
-    console.warn(`WARNUNG: Extrahiertes Binary war '${extractedName}' (CLI-Tool, kein HTTP-Server).`);
-    console.warn(`Die App benötigt ein HTTP-Server-Binary. Prüfe ob 'server.exe' in ${asset.name} enthalten ist.`);
-  } else {
-    console.log(`Extrahiertes Binary: ${extractedName} → whisper-server.exe`);
+  if (serverBin === 'main.exe') {
+    console.warn('WARNUNG: Nur main.exe (CLI-Tool) gefunden – kein HTTP-Server-Binary im ZIP.');
   }
+
+  console.log(`whisper-server.exe bereit: ${DEST}`);
   console.log('=== Setup abgeschlossen ===');
 }
 
