@@ -9,7 +9,7 @@ import zlib  from 'zlib';
 import { pipeline } from 'stream/promises';
 import { Readable } from 'stream';
 
-const REPO    = 'ggerganov/whisper.cpp';
+const REPO    = 'ggml-org/whisper.cpp';
 const API_URL = `https://api.github.com/repos/${REPO}/releases/latest`;
 const BIN_DIR = path.resolve(import.meta.dirname ?? path.dirname(new URL(import.meta.url).pathname), '..', 'bin');
 const DEST    = path.join(BIN_DIR, 'whisper-server.exe');
@@ -156,25 +156,22 @@ function pickAsset(assets) {
   const notMac = (a) => !n(a).includes('xcframework') && !n(a).includes('.jar') && !n(a).includes('win32');
   const x64 = (a) => n(a).includes('x64');
 
-  // 1. Vulkan + x64 (GPU, kein CUDA-Toolkit nötig)
+  // 1. Vulkan + x64 (GPU, kein CUDA nötig – funktioniert mit RTX 50xx Blackwell)
   const vulkan = assets.find(a => isZip(a) && notMac(a) && x64(a) && n(a).includes('vulkan'));
   if (vulkan) return vulkan;
 
-  // 2. CUBLAS 12.x + x64 (NVIDIA GPU, CUDA 12 – neueste Version bevorzugen)
+  // 2. BLAS + x64 (OpenBLAS CPU-Beschleunigung, ~2x schneller als plain, keine GPU-Abhängigkeit)
+  // CUDA 12.4 wird bewusst übersprungen: RTX 5070 Ti (Blackwell) braucht CUDA 12.8+
+  const blas = assets.find(a => isZip(a) && notMac(a) && x64(a) && n(a).includes('blas') && !n(a).includes('cublas'));
+  if (blas) return blas;
+
+  // 3. CUBLAS 12.x (nur als Fallback wenn kein Vulkan/BLAS – möglicherweise inkompatibel mit Blackwell)
   const cuda12 = assets
     .filter(a => isZip(a) && notMac(a) && x64(a) && n(a).includes('cublas') && n(a).includes('12'))
     .sort((a, b) => b.name.localeCompare(a.name))[0];
   if (cuda12) return cuda12;
 
-  // 3. CUBLAS 11.x + x64 (NVIDIA GPU, älterer Treiber)
-  const cuda11 = assets.find(a => isZip(a) && notMac(a) && x64(a) && n(a).includes('cublas'));
-  if (cuda11) return cuda11;
-
-  // 4. BLAS + x64 (optimierte CPU-Version, kein GPU)
-  const blas = assets.find(a => isZip(a) && notMac(a) && x64(a) && n(a).includes('blas') && !n(a).includes('cublas'));
-  if (blas) return blas;
-
-  // 5. Plain x64 (CPU, keine Beschleunigung – letzter Ausweg)
+  // 4. Plain x64 (letzter Ausweg)
   const plain = assets.find(a =>
     isZip(a) && notMac(a) && x64(a) &&
     !n(a).includes('blas') && !n(a).includes('cublas') && !n(a).includes('cuda'),
