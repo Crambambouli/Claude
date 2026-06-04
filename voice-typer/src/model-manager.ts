@@ -5,29 +5,46 @@ import * as http  from 'http';
 import * as os    from 'os';
 import { logger } from './logger';
 
-const MODEL_FILENAME = 'ggml-large-v3-q5_0.bin';
-const MODEL_URL      = `https://huggingface.co/ggerganov/whisper.cpp/resolve/main/${MODEL_FILENAME}`;
-const MAX_REDIRECTS  = 10;
+const HF_BASE      = 'https://huggingface.co/ggerganov/whisper.cpp/resolve/main/';
+const MAX_REDIRECTS = 10;
+
+// Bekannte Modell-Kennungen → Dateinamen
+const MODEL_MAP: Record<string, string> = {
+  'tiny':            'ggml-tiny.bin',
+  'base':            'ggml-base.bin',
+  'small':           'ggml-small.bin',
+  'medium':          'ggml-medium.bin',
+  'large-v1':        'ggml-large-v1.bin',
+  'large-v2':        'ggml-large-v2.bin',
+  'large-v3':        'ggml-large-v3.bin',
+  'large-v3-q5_0':   'ggml-large-v3-q5_0.bin',
+  'large-v3-turbo':  'ggml-large-v3-turbo.bin',
+};
 
 export class ModelManager {
-  static modelPath(): string {
-    const appData = process.env['APPDATA'] ?? path.join(os.homedir(), 'AppData', 'Roaming');
-    return path.join(appData, 'Blitztext', 'models', MODEL_FILENAME);
+  static filename(model: string): string {
+    return MODEL_MAP[model] ?? `ggml-${model}.bin`;
   }
 
-  static isDownloaded(): boolean {
-    const p = ModelManager.modelPath();
+  static modelPath(model: string): string {
+    const appData = process.env['APPDATA'] ?? path.join(os.homedir(), 'AppData', 'Roaming');
+    return path.join(appData, 'Blitztext', 'models', ModelManager.filename(model));
+  }
+
+  static isDownloaded(model: string): boolean {
+    const p = ModelManager.modelPath(model);
     return fs.existsSync(p) && fs.statSync(p).size > 0;
   }
 
-  static async ensureModel(onProgress?: (pct: number) => void): Promise<void> {
-    if (ModelManager.isDownloaded()) return;
+  static async ensureModel(model: string, onProgress?: (pct: number) => void): Promise<void> {
+    if (ModelManager.isDownloaded(model)) return;
 
-    const dest = ModelManager.modelPath();
+    const dest = ModelManager.modelPath(model);
     fs.mkdirSync(path.dirname(dest), { recursive: true });
 
-    logger.info(`Lade Whisper-Modell herunter: ${MODEL_URL}`);
-    await downloadWithRedirects(MODEL_URL, dest, MAX_REDIRECTS, onProgress);
+    const url = HF_BASE + ModelManager.filename(model);
+    logger.info(`Lade Whisper-Modell "${model}" herunter: ${url}`);
+    await downloadWithRedirects(url, dest, MAX_REDIRECTS, onProgress);
     logger.info(`Modell gespeichert: ${dest}`);
   }
 }

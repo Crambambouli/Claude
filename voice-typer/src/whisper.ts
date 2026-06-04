@@ -108,8 +108,8 @@ const SERVER_PORT    = 8765;
 const SERVER_STARTUP = 120_000; // ms – Modell liegt auf Disk, kein Download beim Start
 
 export class WhisperService {
-  // Rückwärtskompatible Felder – werden bei whisper.cpp nicht genutzt
   private language = 'de';
+  private model    = 'small';
 
   private serverProc:     ChildProcess | null = null;
   private serverReady     = false;
@@ -117,18 +117,20 @@ export class WhisperService {
 
   constructor(
     _whisperPath: string,
-    _model = 'large-v3-q5_0',
+    model = 'small',
     language = 'de',
   ) {
+    this.model    = model || 'small';
     this.language = language || 'de';
   }
 
-  setPath(_p: string): void {
-    // whisper.cpp nutzt festen Binary-Pfad – kein Neustart nötig
-  }
+  setPath(_p: string): void {}
 
-  setModel(_m: string): void {
-    // Modell ist fest (large-v3-q5_0) – kein Neustart nötig
+  setModel(m: string): void {
+    if (m && m !== this.model) {
+      this.model = m;
+      this.stopServer(); // Neustart mit neuem Modell beim nächsten Aufruf
+    }
   }
 
   setLanguage(l: string): void {
@@ -148,10 +150,10 @@ export class WhisperService {
     if (!fs.existsSync(bin)) {
       return { ok: false, message: `whisper-server.exe nicht gefunden: ${bin}. Bitte "npm run setup" ausführen.` };
     }
-    if (!ModelManager.isDownloaded()) {
-      return { ok: false, message: `Whisper-Modell fehlt: ${ModelManager.modelPath()}` };
+    if (!ModelManager.isDownloaded(this.model)) {
+      return { ok: false, message: `Whisper-Modell fehlt: ${ModelManager.modelPath(this.model)}` };
     }
-    return { ok: true, message: `whisper.cpp bereit (${bin})` };
+    return { ok: true, message: `whisper.cpp bereit – Modell: ${this.model} (${bin})` };
   }
 
   static rmsEnergy(wavBuffer: Buffer): number {
@@ -200,7 +202,7 @@ export class WhisperService {
       this.stopServer();
 
       const bin   = this.binaryPath();
-      const model = ModelManager.modelPath();
+      const model = ModelManager.modelPath(this.model);
 
       if (!fs.existsSync(bin)) {
         reject(new Error(`whisper-server.exe nicht gefunden: ${bin}. Bitte "npm run setup" ausführen.`));

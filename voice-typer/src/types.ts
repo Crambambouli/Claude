@@ -24,7 +24,7 @@ export interface Settings {
 
 export const DEFAULT_SETTINGS: Settings = {
   whisperPath:     '',
-  whisperModel:    'large-v3-q5_0',
+  whisperModel:    'small',
   whisperLanguage: 'de',
   apiKey:          '',
   hotkey:          'Ctrl+F8',
