@@ -322,7 +322,7 @@ export class WhisperService {
     const json = JSON.parse(raw) as { text?: string; error?: string };
     if (json.error) throw new Error(json.error);
 
-    const text = (json.text ?? '').trim();
+    const text = (json.text ?? '').replace(/\n+/g, ' ').trim();
     logger.info(`Transkript: "${text}"`);
     return text;
   }
