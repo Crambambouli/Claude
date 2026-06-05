@@ -1,160 +1,64 @@
-# Blitztext
+# Blitztext – Lokale Spracheingabe für Windows
 
-Electron + TypeScript Desktop-App für Windows (interner Code-Name: *voice-typer*).  
-Drücke **Ctrl+F8** → spreche → drücke **Ctrl+F8** erneut → Text erscheint im aktiven Textfeld.
+Blitztext ist eine lokale, datenschutzfreundliche Spracheingabe-App für Windows. Gesprochener Text wird per Hotkey aufgenommen, lokal transkribiert und automatisch in das aktive Fenster eingefügt – ohne Cloud, ohne Internetverbindung, ohne Datenweitergabe.
 
----
+## Funktionen
 
-## Voraussetzungen
+- **Globaler Hotkey** (Standard: `Ctrl+F8`) – startet und stoppt die Aufnahme aus jeder Anwendung heraus
+- **Lokale KI-Transkription** via [whisper.cpp](https://github.com/ggml-org/whisper.cpp) – läuft vollständig auf dem eigenen Rechner
+- **Deutsch/Englisch-Mix** – automatische Spracherkennung, konfigurierbar
+- **Wörterbuch** – Fachbegriffe und Namen eintragen für bessere Erkennungsgenauigkeit
+- **Lernfunktion** – Erkennungsfehler per `Ctrl+F9` korrigieren, die App merkt sich die Korrekturen dauerhaft
+- **Modi**: Normal · Plus · Rage · Emoji (erfordern Anthropic API-Key)
+- **TTS** – erkannten Text vorlesen lassen
+- **Overlay** – schwebendes Statusfenster, stiehlt nie den Fokus
 
-### 1. Node.js ≥ 18
-https://nodejs.org/
+## Systemvoraussetzungen
 
-### 2. Python-Whisper (STT)
-```bash
-# Python ≥ 3.9 erforderlich
-pip install faster-whisper
-# Das Modell wird beim ersten Start geladen (~3 GB für "large-v3")
-```
+- Windows 10 / 11 (64-Bit)
+- Node.js 20 oder neuer
+- Ca. 500 MB freier Speicherplatz (Modell + Binaries)
+- Mikrofon
 
-**GPU-Beschleunigung (NVIDIA, empfohlen):** Der Server nutzt automatisch die
-GPU (`device='cuda'`, `float16`) und fällt sonst sauber auf CPU (`int8`) zurück.
-Dafür zusätzlich die CUDA-Laufzeitbibliotheken installieren:
-```bash
-pip install -U faster-whisper nvidia-cublas-cu12 nvidia-cudnn-cu12
-```
+## Installation
 
-> **Alternativ**: `pip install openai-whisper` (wird als Fallback erkannt)  
-> oder [whisper.cpp](https://github.com/ggerganov/whisper.cpp) – Pfad zum Binary in den Einstellungen hinterlegen.
+```powershell
+# 1. Repository klonen
+git clone https://github.com/Crambambouli/Claude.git
+cd Claude\voice-typer
 
-### 3. ffmpeg (Whisper-Abhängigkeit)
-```bash
-# Windows (winget)
-winget install ffmpeg
-# oder: https://ffmpeg.org/download.html → Bin in PATH eintragen
-```
-
-### 4. Anthropic API Key (optional)
-Nur nötig für die Modi **Plus**, **Rage** und **Emoji**.  
-https://console.anthropic.com/
-
----
-
-## Setup & Start
-
-```bash
-# 1. Abhängigkeiten installieren
+# 2. Abhängigkeiten installieren
 npm install
 
-# 2. Icons generieren + kompilieren + starten
+# 3. whisper-server.exe herunterladen
+npm run setup
+
+# 4. App starten
 npm run dev
 ```
 
-Beim ersten Start erscheint ein Tray-Icon in der Windows-Taskleiste.  
-Über Rechtsklick → **Einstellungen** können alle Parameter konfiguriert werden.
-
----
-
-## Dev-Workflow (Hot-Reload)
-
-```bash
-# Terminal 1: TypeScript kompilieren (beobachtend)
-npm run watch
-
-# Terminal 2: Electron mit Auto-Restart
-npx electronmon dist/main.js
-```
-
----
-
-## Verzeichnisstruktur
-
-```
-voice-typer/
-├── assets/icons/          PNG-Icons (erzeugt durch scripts/create-icons.js)
-├── scripts/
-│   ├── create-icons.js    Generiert die drei Tray-Icons
-│   └── post-build.js      Kopiert renderer/*.html nach dist/renderer/
-├── src/
-│   ├── main.ts            Electron-Hauptprozess – Orchestrierung
-│   ├── preload.ts         contextBridge für das Settings-Fenster
-│   ├── tray.ts            Tray-Icon & Kontextmenü
-│   ├── hotkey.ts          Globaler Shortcut (Default Ctrl+F8, electron.globalShortcut)
-│   ├── audio-recorder.ts  Audio-Aufnahme via verstecktem BrowserWindow
-│   ├── whisper.ts         Whisper-Server (Port 8765) + CLI-Fallback
-│   ├── modes.ts           Textmodus-Verarbeitung (Normal/Plus/Rage/Emoji)
-│   ├── clipboard-manager.ts Clipboard + Ctrl+V via WScript.Shell
-│   ├── correction-manager.ts Korrektur-Datenbank (LCS-Diff, Ctrl+F9)
-│   ├── tts-manager.ts     Text-to-Speech via Windows SAPI
-│   ├── settings.ts        JSON-basierter Konfigurations-Manager
-│   ├── logger.ts          Datei- & Konsolen-Logger
-│   ├── types.ts           Gemeinsame TypeScript-Typen
-│   └── renderer/
-│       ├── overlay.html   Schwebendes Overlay-Fenster
-│       ├── recorder.html  Verstecktes Fenster für Mikrofon-Zugriff
-│       ├── correction.html Korrektur-Editor (Ctrl+F9)
-│       └── settings.html  Einstellungs-Dialog
-├── package.json
-└── tsconfig.json
-```
-
----
-
-## Modi
-
-| Modus    | Beschreibung                                          | API |
-|----------|-------------------------------------------------------|-----|
-| Normal   | Rohtext genau wie gesprochen                         | –   |
-| Plus     | Höflich & professionell umformuliert                 | ✓   |
-| Rage     | Aggressive Diktate → sachliche, höfliche Nachricht   | ✓   |
-| Emoji    | Passende Emojis werden hinzugefügt                   | ✓   |
-
----
+Beim ersten Start lädt Blitztext das Whisper-Sprachmodell automatisch herunter (~244 MB für `small`).
 
 ## Einstellungen
 
-`%APPDATA%\Blitztext\config.json`
+Erreichbar über das Tray-Icon (rechte Maustaste → Einstellungen):
 
-| Key               | Default      | Beschreibung                            |
-|-------------------|--------------|-----------------------------------------|
-| `whisperPath`     | `""`         | Pfad zum Whisper-Binary / Verzeichnis (leer = Server-Modus) |
-| `whisperModel`    | `"large-v3"` | Whisper-Modell (tiny/base/small/medium/large-v3) |
-| `whisperLanguage` | `"de"`       | Sprache (auto/de/en/…)                  |
-| `apiKey`          | `""`         | Anthropic API Key                       |
-| `hotkey`          | `"Ctrl+F8"`  | Globaler Hotkey (Electron-Accelerator)  |
-| `audioDevice`     | `""`         | Mikrofon-Geräte-ID (leer = Standard)    |
-| `ttsVoice`        | `""`         | SAPI-Stimme (leer = Systemstimme)       |
+| Einstellung | Beschreibung |
+|-------------|-------------|
+| Modell | `small` (Standard, ~3–4 s Latenz) bis `large-v3` (~2 s mit GPU) |
+| Sprache | Automatisch (für Deutsch/Englisch-Mix empfohlen) |
+| Wörterbuch | Fachbegriffe und Namen für bessere Erkennung |
+| Hotkey | Frei wählbar, Standard: `Ctrl+F8` |
+| Mikrofon | Auswahl des Aufnahmegeräts |
 
-Gelernte Korrekturen: `%APPDATA%\Blitztext\corrections.json`  
-Editor öffnen: nach einem Diktat **Ctrl+F9** drücken.
+## Installer bauen
 
----
-
-## Logs
-
-`%APPDATA%\Blitztext\voice-typer.log`  
-Über **Einstellungen → Log öffnen** direkt einsehbar.
-
----
-
-## Build / Packaging
-
-```bash
+```powershell
 npm run package
-# → installer/ enthält NSIS-Installer für Windows x64
 ```
 
----
+Erstellt `installer\Blitztext Setup 1.0.0.exe` (NSIS-Installer, Windows x64).
 
-## Bekannte Hinweise
+## Lizenz
 
-- **Erster Whisper-Aufruf** kann 20–30 s dauern (Modell-Download & Python-Startup).  
-  Danach ist es deutlich schneller (~2–5 s für kurze Diktate).
-
-- **Tray-Icon** erscheint nach dem Start in der Windows-Taskleiste (ggf. im  
-  versteckten Bereich → Pfeil anklicken → Icon sichtbar machen).
-
-- Der **Hotkey Ctrl+F8** kann in den Einstellungen auf eine beliebige Taste  
-  (z.B. eine Mouse-Button-Zuweisung über Gaming-Software) geändert werden.
-
-- Für **optimale Whisper-Qualität**: Mikrofon-Eingangspegel 70–80 %, kein Echo.
+MIT – siehe [LICENSE](LICENSE)
