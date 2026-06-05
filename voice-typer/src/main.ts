@@ -17,6 +17,7 @@ import { CorrectionManager }  from './correction-manager';
 import { SettingsManager }    from './settings';
 import { AppState, Mode, Settings } from './types';
 import { logger } from './logger';
+import { loadLanguage, getAllTranslations } from './i18n/index';
 
 // ─── Singleton-Guard ────────────────────────────────────────────────────────
 if (!app.requestSingleInstanceLock()) {
@@ -58,6 +59,9 @@ class VoiceTyper {
     this.settings.load();
 
     const s = this.settings.getAll();
+
+    // i18n initialisieren
+    loadLanguage(s.uiLanguage || 'de');
 
     this.modes = new ModeProcessor();
     this.modes.setApiKey(s.apiKey);
@@ -125,6 +129,8 @@ class VoiceTyper {
   private setupIPC(): void {
     ipcMain.handle('settings-get', () => this.settings.getAll());
 
+    ipcMain.handle('i18n-get', () => getAllTranslations());
+
     ipcMain.on('settings-save', (_e, partial: Partial<Settings>) => {
       const prev = this.settings.getAll();
       this.settings.setAll(partial);
@@ -143,6 +149,12 @@ class VoiceTyper {
       }
       if (partial.ttsVoice !== undefined) {
         this.tts.setVoice(next.ttsVoice);
+      }
+      if (partial.uiLanguage !== undefined && partial.uiLanguage !== prev.uiLanguage) {
+        loadLanguage(next.uiLanguage);
+        // Overlay über neue Übersetzungen informieren
+        const translations = getAllTranslations();
+        this.overlay?.sendTranslations(translations);
       }
       logger.info('Settings vom Settings-Fenster übernommen.');
     });
@@ -351,8 +363,8 @@ class SettingsWindow {
 
     SettingsWindow.win.once('ready-to-show', () => {
       SettingsWindow.win?.show();
-      // Sende initiale Settings an den Renderer
-      SettingsWindow.win?.webContents.send('settings-init', settings.getAll());
+      // Sende initiale Settings + Übersetzungen an den Renderer
+      SettingsWindow.win?.webContents.send('settings-init', settings.getAll(), getAllTranslations());
     });
 
     SettingsWindow.win.on('closed', () => { SettingsWindow.win = null; });

@@ -22,6 +22,8 @@ export interface Settings {
   ttsReplacements: Record<string, string>;
   /** Name der SAPI-Stimme (leer = Systemstandard) */
   ttsVoice: string;
+  /** Sprache der Benutzeroberfläche, z.B. "de", "en", "fr" */
+  uiLanguage: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -33,6 +35,7 @@ export const DEFAULT_SETTINGS: Settings = {
   hotkey:          'Ctrl+F8',
   audioDevice:     '',
   ttsVoice:        '',
+  uiLanguage:      'de',
   ttsReplacements: {
     Layer:    'Lejer',
     Layers:   'Lejerz',

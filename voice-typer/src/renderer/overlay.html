@@ -213,12 +213,12 @@
 
 <!-- Titelleiste (Drag-Bereich) -->
 <div class="title-bar">
-  <span class="name">🎤 VOICE TYPER</span>
+  <span class="name">🎤 <span data-i18n="app.name">BLITZTEXT</span></span>
   <div class="controls">
     <button class="ctrl-btn" id="minBtn" title="Kompakt / Vollbild" onclick="minimizeOverlay()">─</button>
     <button class="ctrl-btn" title="Einstellungen" onclick="openSettings()">⚙</button>
     <button class="ctrl-btn close-btn" title="Ausblenden" onclick="hideOverlay()">×</button>
-    <button class="ctrl-btn exit-btn" title="Beenden" onclick="exitApp()">END</button>
+    <button class="ctrl-btn exit-btn" title="Beenden" onclick="exitApp()" data-i18n="overlay.exit">END</button>
   </div>
 </div>
 
@@ -241,10 +241,10 @@
 
 <!-- Modus-Auswahl -->
 <div class="mode-row">
-  <button class="mode-btn active" data-mode="Normal"  onclick="setMode(this)">Normal</button>
-  <button class="mode-btn"        data-mode="Plus"    onclick="setMode(this)">Plus ✨</button>
-  <button class="mode-btn"        data-mode="Rage"    onclick="setMode(this)">Rage 💢</button>
-  <button class="mode-btn"        data-mode="Emoji"   onclick="setMode(this)">Emoji 😊</button>
+  <button class="mode-btn active" data-mode="Normal"  onclick="setMode(this)" data-i18n="mode.Normal">Normal</button>
+  <button class="mode-btn"        data-mode="Plus"    onclick="setMode(this)"><span data-i18n="mode.Plus">Plus</span> ✨</button>
+  <button class="mode-btn"        data-mode="Rage"    onclick="setMode(this)"><span data-i18n="mode.Rage">Rage</span> 💢</button>
+  <button class="mode-btn"        data-mode="Emoji"   onclick="setMode(this)"><span data-i18n="mode.Emoji">Emoji</span> 😊</button>
 </div>
 
 <!-- Letzter transkribierter Text -->
@@ -271,10 +271,29 @@ const pauseBtn    = document.getElementById('pauseBtn');
 
 let currentLastText = '';
 
+// ─── i18n ───────────────────────────────────────────────────────────────────
+let _t = {};
+
+function applyI18n(translations) {
+  _t = translations || {};
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const key = el.getAttribute('data-i18n');
+    if (_t[key]) el.textContent = _t[key];
+  });
+}
+
+ipcRenderer.on('i18n-update', (_e, translations) => {
+  applyI18n(translations);
+});
+
+function tr(key, fallback) {
+  return _t[key] || fallback;
+}
+
 const STATE_CONFIG = {
-  idle:       { label: 'BEREIT',        icon: '🎤', hint: 'Klicken oder Ctrl+F8 drücken' },
-  recording:  { label: 'AUFNAHME …',    icon: '⏹',  hint: 'Erneut klicken zum Stoppen' },
-  processing: { label: 'VERARBEITUNG …',icon: '⏳', hint: 'Bitte warten …' },
+  get idle()       { return { label: tr('overlay.idle',       'BEREIT'),        icon: '🎤', hint: 'Klicken oder Ctrl+F8 drücken' }; },
+  get recording()  { return { label: tr('overlay.recording',  'AUFNAHME …'),    icon: '⏹',  hint: 'Erneut klicken zum Stoppen' }; },
+  get processing() { return { label: tr('overlay.processing', 'VERARBEITUNG …'),icon: '⏳', hint: 'Bitte warten …' }; },
 };
 
 // ─── Compact-Modus ──────────────────────────────────────────────────────────

@@ -3,20 +3,27 @@ import * as path from 'path';
 import * as fs   from 'fs';
 import { AppState, Mode } from './types';
 import { logger } from './logger';
+import { t } from './i18n/index';
 
 const MODES: Mode[] = ['Normal', 'Plus', 'Rage', 'Emoji'];
 
-const STATE_LABEL: Record<AppState, string> = {
-  idle:       '● Bereit',
-  recording:  '● Aufnahme …',
-  processing: '● Verarbeitung …',
-};
+function getStateLabel(state: AppState): string {
+  const labels: Record<AppState, string> = {
+    idle:       `● ${t('overlay.idle')}`,
+    recording:  `● ${t('overlay.recording')}`,
+    processing: `● ${t('overlay.processing')}`,
+  };
+  return labels[state];
+}
 
-const STATE_TOOLTIP: Record<AppState, string> = {
-  idle:       'Blitztext – Bereit (Ctrl+F8 = Aufnahme starten)',
-  recording:  'Blitztext – Aufnahme läuft … (Ctrl+F8 = Stoppen)',
-  processing: 'Blitztext – Verarbeitung …',
-};
+function getStateTooltip(state: AppState): string {
+  const tooltips: Record<AppState, string> = {
+    idle:       `${t('app.name')} – ${t('overlay.idle')} (Ctrl+F8)`,
+    recording:  `${t('app.name')} – ${t('overlay.recording')} (Ctrl+F8)`,
+    processing: `${t('app.name')} – ${t('overlay.processing')}`,
+  };
+  return tooltips[state];
+}
 
 interface TrayOptions {
   mode:            Mode;
@@ -44,7 +51,7 @@ export class TrayManager {
     this.state = state;
     if (this.tray) {
       this.tray.setImage(this.getIcon(state));
-      this.tray.setToolTip(`Blitztext [${this.mode}] – ${STATE_TOOLTIP[state]}`);
+      this.tray.setToolTip(`${t('app.name')} [${this.mode}] – ${getStateTooltip(state)}`);
     }
     // Kein rebuild() – Win32-HMENU-Neuaufbau löst Fokus-Interaktionen aus
   }
@@ -59,7 +66,7 @@ export class TrayManager {
 
     const menu = Menu.buildFromTemplate([
       {
-        label:   STATE_LABEL[this.state],
+        label:   getStateLabel(this.state),
         enabled: false,
         icon:    this.getSmallIcon(this.state),
       },
@@ -67,7 +74,7 @@ export class TrayManager {
       {
         label:   'Modus',
         submenu: MODES.map(m => ({
-          label:   m,
+          label:   t(`mode.${m}`),
           type:    'radio' as const,
           checked: m === this.mode,
           click:   () => {
@@ -79,22 +86,22 @@ export class TrayManager {
       },
       { type: 'separator' },
       {
-        label: '▣  Overlay anzeigen / verstecken',
+        label: `▣  ${t('tray.toggleOverlay')}`,
         click: () => this.options.onToggleOverlay(),
       },
       {
-        label: '⚙  Einstellungen',
+        label: `⚙  ${t('tray.settings')}`,
         click: () => this.options.onSettings(),
       },
       {
-        label: '✕  Beenden',
+        label: `✕  ${t('tray.quit')}`,
         click: () => this.options.onExit(),
       },
     ]);
 
     this.tray.setContextMenu(menu);
     this.tray.setToolTip(
-      `Blitztext [${this.mode}] – ${STATE_TOOLTIP[this.state]}`
+      `${t('app.name')} [${this.mode}] – ${getStateTooltip(this.state)}`
     );
   }
 

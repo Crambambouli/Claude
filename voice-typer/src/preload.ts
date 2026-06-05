@@ -19,8 +19,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.invoke('get-audio-devices'),
 
   /** Registriert den onSettingsInit-Callback (einmalig beim Öffnen). */
-  onSettingsInit: (cb: (s: Settings) => void): void => {
-    ipcRenderer.once('settings-init', (_e, s: Settings) => cb(s));
+  onSettingsInit: (cb: (s: Settings, translations: Record<string, string>) => void): void => {
+    ipcRenderer.once('settings-init', (_e, s: Settings, translations: Record<string, string>) => cb(s, translations));
   },
 
   /** Prüft, ob Whisper installiert ist. */
@@ -42,4 +42,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   /** Öffnet Log-Datei im System-Editor. */
   openLogFile: (): void =>
     ipcRenderer.send('open-log-file'),
+
+  /** Gibt aktuelle UI-Übersetzungen zurück. */
+  getTranslations: (): Promise<Record<string, string>> =>
+    ipcRenderer.invoke('i18n-get'),
 });

@@ -76,6 +76,11 @@ export class OverlayManager {
     this.win.webContents.send('update-speak-state', state);
   }
 
+  sendTranslations(translations: Record<string, string>): void {
+    if (!this.win || this.win.isDestroyed()) return;
+    this.win.webContents.send('i18n-update', translations);
+  }
+
   toggle(): void {
     if (!this.win || this.win.isDestroyed()) { this.createWindow(); return; }
     if (this.win.isVisible()) this.win.hide();

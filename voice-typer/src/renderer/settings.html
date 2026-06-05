@@ -194,17 +194,51 @@
   </style>
 </head>
 <body>
-<h1>⚙  Blitztext – Einstellungen</h1>
+<h1>⚙  <span data-i18n="settings.title">Blitztext – Einstellungen</span></h1>
+
+<!-- UI-Sprache -->
+<div class="section">
+  <div class="section-title" data-i18n="settings.section.uilang">Sprache der Benutzeroberfläche</div>
+  <div class="field">
+    <label for="uiLanguage" data-i18n="settings.uilang.label">UI-Sprache</label>
+    <select id="uiLanguage">
+      <option value="de">Deutsch</option>
+      <option value="en">English</option>
+      <option value="fr">Français</option>
+      <option value="es">Español</option>
+      <option value="it">Italiano</option>
+      <option value="pt">Português</option>
+      <option value="nl">Nederlands</option>
+      <option value="pl">Polski</option>
+      <option value="sv">Svenska</option>
+      <option value="no">Norsk</option>
+      <option value="da">Dansk</option>
+      <option value="fi">Suomi</option>
+      <option value="cs">Čeština</option>
+      <option value="sk">Slovenčina</option>
+      <option value="hu">Magyar</option>
+      <option value="ro">Română</option>
+      <option value="bg">Български</option>
+      <option value="hr">Hrvatski</option>
+      <option value="sl">Slovenščina</option>
+      <option value="et">Eesti</option>
+      <option value="lv">Latviešu</option>
+      <option value="lt">Lietuvių</option>
+      <option value="el">Ελληνικά</option>
+      <option value="tr">Türkçe</option>
+    </select>
+  </div>
+</div>
 
 <!-- Whisper -->
 <div class="section">
-  <div class="section-title">Whisper STT</div>
+  <div class="section-title" data-i18n="settings.section.whisper">Whisper STT</div>
   <div class="field">
-    <button class="check-btn" onclick="checkWhisper()">Installation prüfen</button>
+    <button class="check-btn" onclick="checkWhisper()" data-i18n="settings.checkInstall">Installation prüfen</button>
     <div id="checkResult" class="check-result"></div>
   </div>
   <div class="field">
-    <label for="whisperModel">Modell</label>
+    <label for="whisperModel" data-i18n="settings.model.label">Modell</label>
     <select id="whisperModel">
       <option value="tiny">tiny  (~1-2 s, einfache Sprache)</option>
       <option value="base">base  (~2-3 s)</option>
@@ -212,84 +246,102 @@
       <option value="medium">medium  (~6-10 s)</option>
       <option value="large-v3-q5_0">large-v3  (~2 s mit GPU, ~10 s ohne)</option>
     </select>
-    <div class="hint">Modell wird beim ersten Start heruntergeladen. Wechsel erfordert App-Neustart.</div>
+    <div class="hint" data-i18n="settings.model.hint">Modell wird beim ersten Start heruntergeladen. Wechsel erfordert App-Neustart.</div>
   </div>
   <div class="field">
-    <label for="whisperLanguage">Sprache</label>
+    <label for="whisperLanguage" data-i18n="settings.language.label">Sprache</label>
     <select id="whisperLanguage">
-      <option value="auto">Automatisch erkennen (Deutsch/Englisch-Mix)</option>
-      <option value="de">Deutsch</option>
-      <option value="en">Englisch</option>
-      <option value="fr">Französisch</option>
-      <option value="es">Spanisch</option>
-      <option value="it">Italienisch</option>
+      <option value="auto" data-i18n="settings.lang.auto">Automatisch erkennen (Deutsch/Englisch-Mix)</option>
+      <option value="de" data-i18n="settings.lang.de">Deutsch</option>
+      <option value="en" data-i18n="settings.lang.en">Englisch</option>
+      <option value="fr" data-i18n="settings.lang.fr">Französisch</option>
+      <option value="es" data-i18n="settings.lang.es">Spanisch</option>
+      <option value="it" data-i18n="settings.lang.it">Italienisch</option>
     </select>
   </div>
   <div class="field">
-    <label for="whisperPrompt">Wörterbuch / Fachbegriffe</label>
-    <textarea id="whisperPrompt" placeholder="Cadris, Blitztext, weitere Fachbegriffe…"></textarea>
-    <div class="hint">Begriffe die whisper.cpp kennen soll — kommagetrennt oder als Satz. Verbessert Erkennung von Namen und Fachvokabular.</div>
+    <label for="whisperPrompt" data-i18n="settings.prompt.label">Wörterbuch / Fachbegriffe</label>
+    <textarea id="whisperPrompt" data-i18n-placeholder="settings.prompt.placeholder" placeholder="Cadris, Blitztext, weitere Fachbegriffe…"></textarea>
+    <div class="hint" data-i18n="settings.prompt.hint">Begriffe die whisper.cpp kennen soll — verbessert Erkennung von Namen und Fachvokabular.</div>
   </div>
 </div>
 
 <!-- Claude API -->
 <div class="section">
-  <div class="section-title">Claude API (für Modi Plus / Rage / Emoji)</div>
+  <div class="section-title" data-i18n="settings.section.api">Claude API (für Modi Plus / Rage / Emoji)</div>
   <div class="field">
-    <label for="apiKey">Anthropic API Key</label>
+    <label for="apiKey" data-i18n="settings.apiKey.label">Anthropic API Key</label>
     <input id="apiKey" type="password" placeholder="sk-ant-…">
-    <div class="hint">Wird lokal in config.json gespeichert – niemals übertragen.</div>
+    <div class="hint" data-i18n="settings.apiKey.hint">Wird lokal in config.json gespeichert – niemals übertragen.</div>
   </div>
 </div>
 
 <!-- Hotkey & Audio -->
 <div class="section">
-  <div class="section-title">Hotkey &amp; Audio</div>
+  <div class="section-title" data-i18n="settings.section.hotkey">Hotkey &amp; Audio</div>
   <div class="field">
-    <label for="hotkey">Globaler Hotkey</label>
+    <label for="hotkey" data-i18n="settings.hotkey.label">Globaler Hotkey</label>
     <input id="hotkey" type="text" placeholder="Ctrl+F8">
-    <div class="hint">Beispiele: F8, F9, Alt+F8, Ctrl+Shift+R</div>
+    <div class="hint" data-i18n="settings.hotkey.hint">Beispiele: F8, F9, Alt+F8, Ctrl+Shift+R</div>
   </div>
   <div class="field">
-    <label for="audioDevice">Mikrofon</label>
+    <label for="audioDevice" data-i18n="settings.mic.label">Mikrofon</label>
     <select id="audioDevice">
-      <option value="">Standard-Mikrofon</option>
+      <option value="" data-i18n="settings.mic.default">Standard-Mikrofon</option>
     </select>
   </div>
 </div>
 
 <!-- TTS Stimme & Aussprache -->
 <div class="section">
-  <div class="section-title">TTS Stimme &amp; Aussprache</div>
+  <div class="section-title" data-i18n="settings.section.tts">TTS Stimme &amp; Aussprache</div>
   <div class="field">
-    <label for="ttsVoice">Stimme</label>
+    <label for="ttsVoice" data-i18n="settings.ttsVoice.label">Stimme</label>
     <select id="ttsVoice">
-      <option value="">Standard (Systemstimme)</option>
+      <option value="" data-i18n="settings.ttsVoice.default">Standard (Systemstimme)</option>
     </select>
   </div>
   <div id="replacementsList"></div>
-  <button class="add-btn" onclick="addReplacement()">+ Eintrag hinzufügen</button>
-  <div class="hint" style="margin-top:6px">Begriff (links) wird beim Vorlesen durch Aussprache (rechts) ersetzt.</div>
+  <button class="add-btn" onclick="addReplacement()" data-i18n="settings.ttsReplace.add">+ Eintrag hinzufügen</button>
+  <div class="hint" style="margin-top:6px" data-i18n="settings.ttsReplace.hint">Begriff (links) wird beim Vorlesen durch Aussprache (rechts) ersetzt.</div>
 </div>
 
 <!-- Korrekturen -->
 <div class="section">
-  <div class="section-title">Gelernte Korrekturen (Ctrl+F9)</div>
-  <div id="correctionsList"><span class="corrections-empty">Keine Einträge.</span></div>
+  <div class="section-title" data-i18n="settings.section.corrections">Gelernte Korrekturen (Ctrl+F9)</div>
+  <div id="correctionsList"><span class="corrections-empty" data-i18n="settings.corrections.empty">Keine Einträge.</span></div>
 </div>
 
 <!-- Aktionen -->
 <div class="actions">
-  <button class="btn-log" onclick="openLog()">Log öffnen</button>
-  <button class="btn-cancel" onclick="window.close()">Abbrechen</button>
-  <button class="btn-save" onclick="save()">Speichern</button>
+  <button class="btn-log" onclick="openLog()" data-i18n="settings.btn.log">Log öffnen</button>
+  <button class="btn-cancel" onclick="window.close()" data-i18n="settings.btn.cancel">Abbrechen</button>
+  <button class="btn-save" onclick="save()" data-i18n="settings.btn.save">Speichern</button>
 </div>
 
 <script>
   const api = window.electronAPI;
 
+  // ─── i18n Hilfsfunktion ──────────────────────────────────────────────────
+  let _t = {};
+
+  function applyI18n(translations) {
+    _t = translations || {};
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.getAttribute('data-i18n');
+      if (_t[key]) el.textContent = _t[key];
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+      const key = el.getAttribute('data-i18n-placeholder');
+      if (_t[key]) el.placeholder = _t[key];
+    });
+  }
+
   // ─── Init ──────────────────────────────────────────────────────────────
-  api.onSettingsInit((s) => {
+  api.onSettingsInit((s, translations) => {
+    applyI18n(translations);
+
+    document.getElementById('uiLanguage').value     = s.uiLanguage      || 'de';
     document.getElementById('whisperModel').value    = s.whisperModel    || 'small';
     document.getElementById('whisperLanguage').value = s.whisperLanguage ?? 'auto';
     document.getElementById('whisperPrompt').value   = s.whisperPrompt   ?? '';
@@ -313,10 +365,12 @@
     const list = document.getElementById('replacementsList');
     const row  = document.createElement('div');
     row.className = 'replacement-row';
+    const fromPlaceholder = _t['settings.ttsReplace.from'] || 'Begriff';
+    const toPlaceholder   = _t['settings.ttsReplace.to']   || 'Aussprache';
     row.innerHTML =
-      `<input type="text" placeholder="Begriff" value="${esc(from)}">` +
+      `<input type="text" placeholder="${esc(fromPlaceholder)}" value="${esc(from)}">` +
       `<span class="replacement-arrow">→</span>` +
-      `<input type="text" placeholder="Aussprache" value="${esc(to)}">` +
+      `<input type="text" placeholder="${esc(toPlaceholder)}" value="${esc(to)}">` +
       `<button class="remove-btn" onclick="this.parentElement.remove()">×</button>`;
     list.appendChild(row);
   }
@@ -324,7 +378,7 @@
   function addReplacement() { appendRow(); }
 
   function esc(s) {
-    return s.replace(/&/g,'&amp;').replace(/"/g,'&quot;');
+    return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;');
   }
 
   function collectReplacements() {
@@ -362,7 +416,7 @@
 
   // ─── Whisper-Check ─────────────────────────────────────────────────────
   async function checkWhisper() {
-    const path = document.getElementById('whisperPath').value;
+    const path = document.getElementById('whisperPath') ? document.getElementById('whisperPath').value : '';
     const res  = await api.checkWhisper(path);
     const el   = document.getElementById('checkResult');
     el.textContent = res.message;
@@ -372,6 +426,7 @@
   // ─── Speichern ─────────────────────────────────────────────────────────
   function save() {
     api.saveSettings({
+      uiLanguage:       document.getElementById('uiLanguage').value,
       whisperModel:     document.getElementById('whisperModel').value,
       whisperLanguage:  document.getElementById('whisperLanguage').value,
       whisperPrompt:    document.getElementById('whisperPrompt').value.trim(),
@@ -393,7 +448,8 @@
       list.innerHTML = '';
       const entries = Object.entries(map);
       if (!entries.length) {
-        list.innerHTML = '<span class="corrections-empty">Keine Einträge.</span>';
+        const emptyMsg = _t['settings.corrections.empty'] || 'Keine Einträge.';
+        list.innerHTML = `<span class="corrections-empty">${esc(emptyMsg)}</span>`;
         return;
       }
       for (const [wrong, right] of entries) {
@@ -408,7 +464,8 @@
           api.deleteCorrection(wrong);
           row.remove();
           if (!document.querySelector('#correctionsList .correction-row')) {
-            list.innerHTML = '<span class="corrections-empty">Keine Einträge.</span>';
+            const emptyMsg = _t['settings.corrections.empty'] || 'Keine Einträge.';
+            list.innerHTML = `<span class="corrections-empty">${esc(emptyMsg)}</span>`;
           }
         });
         list.appendChild(row);

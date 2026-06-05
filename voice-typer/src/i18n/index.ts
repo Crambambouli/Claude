@@ -5,8 +5,9 @@ type Translations = Record<string, string>;
 let current: Translations = {};
 
 export function loadLanguage(lang: string): void {
-  const file = path.join(__dirname, 'i18n', `${lang}.json`);
-  const fallback = path.join(__dirname, 'i18n', 'de.json');
+  // __dirname ist bei dist/i18n/index.js bereits der i18n-Ordner
+  const file = path.join(__dirname, `${lang}.json`);
+  const fallback = path.join(__dirname, 'de.json');
   try {
     current = JSON.parse(fs.readFileSync(fs.existsSync(file) ? file : fallback, 'utf8'));
   } catch {
