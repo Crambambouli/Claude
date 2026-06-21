@@ -106,7 +106,7 @@ function httpPostMultipart(
 // ─── WhisperService ───────────────────────────────────────────────────────────
 
 const SERVER_PORT    = 8765;
-const SERVER_STARTUP = 120_000; // ms – Modell liegt auf Disk, kein Download beim Start
+const SERVER_STARTUP = 300_000; // ms – 5 min: CUDA-Warmup + PTX-JIT beim ersten Start
 
 export class WhisperService {
   private language = 'de';
@@ -147,14 +147,11 @@ export class WhisperService {
   }
 
   checkInstallation(): { ok: boolean; message: string } {
-    const bin = this.binaryPath();
-    if (!fs.existsSync(bin)) {
-      return { ok: false, message: `whisper-server.exe nicht gefunden: ${bin}. Bitte "npm run setup" ausführen.` };
+    const script = this.scriptPath();
+    if (!fs.existsSync(script)) {
+      return { ok: false, message: `whisper_server.py nicht gefunden: ${script}` };
     }
-    if (!ModelManager.isDownloaded(this.model)) {
-      return { ok: false, message: `Whisper-Modell fehlt: ${ModelManager.modelPath(this.model)}` };
-    }
-    return { ok: true, message: `whisper.cpp bereit – Modell: ${this.model} (${bin})` };
+    return { ok: true, message: `faster-whisper bereit – large-v3 CUDA` };
   }
 
   static rmsEnergy(wavBuffer: Buffer): number {
@@ -171,12 +168,10 @@ export class WhisperService {
 
   // ─── Interne Methoden ─────────────────────────────────────────────────────
 
-  private binaryPath(): string {
-    // Produktion: extraResources legt whisper-server.exe in process.resourcesPath
-    const prod = path.join(process.resourcesPath ?? '', 'whisper-server.exe');
+  private scriptPath(): string {
+    const prod = path.join(process.resourcesPath ?? '', 'whisper_server.py');
     if (fs.existsSync(prod)) return prod;
-    // Entwicklung: npm run setup legt whisper-server.exe in bin/ (Projekt-Root)
-    return path.join(__dirname, '..', 'bin', 'whisper-server.exe');
+    return path.join(__dirname, '..', 'bin', 'whisper_server.py');
   }
 
   private async ensureServer(): Promise<void> {
@@ -202,34 +197,19 @@ export class WhisperService {
     return new Promise((resolve, reject) => {
       this.stopServer();
 
-      const bin   = this.binaryPath();
-      const model = ModelManager.modelPath(this.model);
-
-      if (!fs.existsSync(bin)) {
-        reject(new Error(`whisper-server.exe nicht gefunden: ${bin}. Bitte "npm run setup" ausführen.`));
-        return;
-      }
-      if (!fs.existsSync(model)) {
-        reject(new Error(`Whisper-Modell nicht gefunden: ${model}. Modell fehlt oder wurde nicht heruntergeladen.`));
+      const script = this.scriptPath();
+      if (!fs.existsSync(script)) {
+        reject(new Error(`whisper_server.py nicht gefunden: ${script}`));
         return;
       }
 
-      const lang = this.language === 'auto' ? 'de' : this.language;
-      const args = [
-        '-m', model,
-        '--port', String(SERVER_PORT),
-        '--host', '127.0.0.1',
-        '-l', lang,
-        '-t', String(Math.max(4, os.cpus().length - 4)),
-        '--split-on-word',
-        '--suppress-nst',
-        '--prompt',
-        'Dies ist ein deutsches Diktat. Schreibe normale deutsche Wörter zusammen. Trenne keine Silben und keine Wortbestandteile mit Leerzeichen.',
-      ];
+      const lang    = this.language === 'auto' ? 'de' : this.language;
+      const fwModel = 'large-v3';
+      const args    = [script, fwModel, lang, 'cuda'];
 
-      logger.info(`Starte whisper.cpp-Server: ${bin} ${args.join(' ')}`);
+      logger.info(`Starte faster-whisper-Server: python ${args.join(' ')}`);
 
-      const proc = spawn(bin, args, {
+      const proc = spawn('python', args, {
         stdio:       ['ignore', 'pipe', 'pipe'],
         detached:    false,
         windowsHide: true,
@@ -242,8 +222,8 @@ export class WhisperService {
         this.serverReady = false;
         reject(new Error(
           err.code === 'ENOENT'
-            ? `whisper-server.exe nicht gefunden: ${bin}`
-            : `Whisper-Server Fehler: ${err.message}`,
+            ? `python.exe nicht gefunden – Python muss im PATH sein`
+            : `faster-whisper-Server Fehler: ${err.message}`,
         ));
       });
 
@@ -284,7 +264,7 @@ export class WhisperService {
         if (!this.serverProc) return; // Prozess bereits beendet – exit-Handler übernimmt
         if (await this.isServerAlive()) {
           this.serverReady = true;
-          logger.info('Whisper-Server (whisper.cpp) bereit.');
+          logger.info('faster-whisper-Server bereit (CUDA warm).');
           resolve();
           return;
         }
@@ -324,13 +304,15 @@ export class WhisperService {
     const boundary = `----BlitztextBoundary${Date.now()}`;
     const body     = buildMultipart(boundary, audioBuffer, lang);
 
+    const t0  = Date.now();
     const raw = await httpPostMultipart(SERVER_PORT, '/inference', body, boundary, 60_000);
+    const ms  = Date.now() - t0;
 
     const json = JSON.parse(raw) as { text?: string; error?: string };
     if (json.error) throw new Error(json.error);
 
     const text = (json.text ?? '').replace(/\n+/g, ' ').trim();
-    logger.info(`Transkript: "${text}"`);
+    logger.info(`Transkript (${ms} ms): "${text}"`);
     return text;
   }
 }
