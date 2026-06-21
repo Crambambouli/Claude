@@ -5,7 +5,7 @@ import { DEFAULT_SETTINGS, Settings } from './types';
 import { logger } from './logger';
 
 /** Aktuelle Config-Schema-Version (steuert einmalige Default-Migrationen). */
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 4;
 
 export class SettingsManager {
   private data: Settings = { ...DEFAULT_SETTINGS };
@@ -45,6 +45,29 @@ export class SettingsManager {
               `Whisper-Sprache-Migration: auto → ${DEFAULT_SETTINGS.whisperLanguage}`,
             );
           }
+        }
+
+        // Qualitätsmigration: tiny/base/small sind für schnelles deutsches Diktat
+        // mit Hintergrundgeräuschen zu ungenau und trennen Wörter/Silben häufiger.
+        if ((parsed._schemaVersion ?? 0) < 2) {
+          if (['tiny', 'base', 'small'].includes(this.data.whisperModel)) {
+            const oldModel = this.data.whisperModel;
+            this.data.whisperModel = DEFAULT_SETTINGS.whisperModel;
+            logger.info(
+              `Whisper-Qualitätsmigration: ${oldModel} → ${DEFAULT_SETTINGS.whisperModel}`,
+            );
+          }
+        }
+
+        if ((parsed._schemaVersion ?? 0) < 3) {
+          this.data.ttsProvider = this.data.ttsProvider || DEFAULT_SETTINGS.ttsProvider;
+          this.data.azureSpeechRegion = this.data.azureSpeechRegion || DEFAULT_SETTINGS.azureSpeechRegion;
+          this.data.azureSpeechVoice = this.data.azureSpeechVoice || DEFAULT_SETTINGS.azureSpeechVoice;
+        }
+
+        if ((parsed._schemaVersion ?? 0) < 4) {
+          this.data.elevenLabsVoiceId = this.data.elevenLabsVoiceId || DEFAULT_SETTINGS.elevenLabsVoiceId;
+          this.data.elevenLabsModel = this.data.elevenLabsModel || DEFAULT_SETTINGS.elevenLabsModel;
         }
 
         this.save();

@@ -193,10 +193,12 @@
     <label for="whisperModel">Modell</label>
     <select id="whisperModel">
       <option value="tiny">tiny  (schnell, weniger genau)</option>
-      <option value="base" selected>base  (empfohlen)</option>
-      <option value="small">small</option>
-      <option value="medium">medium</option>
-      <option value="large">large  (langsam, sehr genau)</option>
+      <option value="base">base</option>
+      <option value="small">small  (schnell)</option>
+      <option value="medium" selected>medium  (empfohlen: genauer)</option>
+      <option value="large-v3-turbo">large-v3-turbo  (sehr genau, schneller als large-v3)</option>
+      <option value="large-v3-q5_0">large-v3-q5_0  (sehr genau, komprimiert)</option>
+      <option value="large-v3">large-v3  (maximal genau, langsam)</option>
     </select>
   </div>
   <div class="field">
@@ -242,10 +244,48 @@
 <div class="section">
   <div class="section-title">TTS Stimme &amp; Aussprache</div>
   <div class="field">
+    <label for="ttsProvider">Vorlese-Anbieter</label>
+    <select id="ttsProvider" onchange="updateTtsFields()">
+      <option value="local">Lokal (Windows-Stimme)</option>
+      <option value="elevenlabs">ElevenLabs (professionelle Cloud-Stimme)</option>
+      <option value="azure">Azure Speech (professionelle Neural Voice)</option>
+    </select>
+    <div class="hint">Cloud-TTS verbraucht Kontingent. Keys werden nicht gespeichert: ELEVENLABS_API_KEY bzw. AZURE_SPEECH_KEY.</div>
+  </div>
+  <div class="field" id="field-elevenLabsVoiceId">
+    <label for="elevenLabsVoiceId">ElevenLabs Voice-ID</label>
+    <input id="elevenLabsVoiceId" type="text" placeholder="z.B. 21m00Tcm4TlvDq8ikWAM">
+  </div>
+  <div class="field" id="field-elevenLabsModel">
+    <label for="elevenLabsModel">ElevenLabs Modell</label>
+    <select id="elevenLabsModel">
+      <option value="eleven_multilingual_v2">eleven_multilingual_v2 (empfohlen für Deutsch/Englisch)</option>
+      <option value="eleven_turbo_v2_5">eleven_turbo_v2_5 (schneller)</option>
+      <option value="eleven_flash_v2_5">eleven_flash_v2_5 (sehr schnell)</option>
+    </select>
+  </div>
+  <div class="field" id="field-azureSpeechRegion">
+    <label for="azureSpeechRegion">Azure Region</label>
+    <input id="azureSpeechRegion" type="text" placeholder="westeurope">
+    <div class="hint">Beispiele: westeurope, germanywestcentral, swedencentral.</div>
+  </div>
+  <div class="field" id="field-azureSpeechVoice">
+    <label for="azureSpeechVoice">Azure Stimme</label>
+    <select id="azureSpeechVoice">
+      <option value="de-DE-KatjaNeural">de-DE-KatjaNeural</option>
+      <option value="de-DE-ConradNeural">de-DE-ConradNeural</option>
+      <option value="de-DE-AmalaNeural">de-DE-AmalaNeural</option>
+      <option value="de-DE-BerndNeural">de-DE-BerndNeural</option>
+      <option value="de-DE-SeraphinaMultilingualNeural">de-DE-SeraphinaMultilingualNeural</option>
+      <option value="de-DE-FlorianMultilingualNeural">de-DE-FlorianMultilingualNeural</option>
+    </select>
+  </div>
+  <div class="field" id="field-ttsVoice">
     <label for="ttsVoice">Stimme</label>
     <select id="ttsVoice">
       <option value="">Standard (Systemstimme)</option>
     </select>
+    <div class="hint">Nur für lokalen Anbieter relevant.</div>
   </div>
   <div id="replacementsList"></div>
   <button class="add-btn" onclick="addReplacement()">+ Eintrag hinzufügen</button>
@@ -271,14 +311,29 @@
   // ─── Init ──────────────────────────────────────────────────────────────
   api.onSettingsInit((s) => {
     document.getElementById('whisperPath').value     = s.whisperPath     ?? '';
-    document.getElementById('whisperModel').value    = s.whisperModel    ?? 'base';
+    document.getElementById('whisperModel').value    = s.whisperModel    ?? 'medium';
     document.getElementById('whisperLanguage').value = s.whisperLanguage ?? 'auto';
     document.getElementById('apiKey').value          = s.apiKey          ?? '';
     document.getElementById('hotkey').value          = s.hotkey          ?? 'Ctrl+F8';
     document.getElementById('audioDevice').value     = s.audioDevice     ?? '';
     document.getElementById('ttsVoice').value        = s.ttsVoice        ?? '';
+    document.getElementById('ttsProvider').value     = s.ttsProvider     ?? 'local';
+    document.getElementById('elevenLabsVoiceId').value = s.elevenLabsVoiceId ?? '';
+    document.getElementById('elevenLabsModel').value   = s.elevenLabsModel   ?? 'eleven_multilingual_v2';
+    document.getElementById('azureSpeechRegion').value = s.azureSpeechRegion ?? 'westeurope';
+    document.getElementById('azureSpeechVoice').value  = s.azureSpeechVoice  ?? 'de-DE-KatjaNeural';
     buildReplacementRows(s.ttsReplacements ?? {});
+    updateTtsFields();
   });
+
+  function updateTtsFields() {
+    const p = document.getElementById('ttsProvider').value;
+    document.getElementById('field-elevenLabsVoiceId').style.display = p === 'elevenlabs' ? '' : 'none';
+    document.getElementById('field-elevenLabsModel').style.display   = p === 'elevenlabs' ? '' : 'none';
+    document.getElementById('field-azureSpeechRegion').style.display = p === 'azure'      ? '' : 'none';
+    document.getElementById('field-azureSpeechVoice').style.display  = p === 'azure'      ? '' : 'none';
+    document.getElementById('field-ttsVoice').style.display          = p === 'local'      ? '' : 'none';
+  }
 
   // ─── TTS-Wörterliste ──────────────────────────────────────────────────────
   function buildReplacementRows(map) {
@@ -359,6 +414,11 @@
       hotkey:           document.getElementById('hotkey').value.trim() || 'Ctrl+F8',
       audioDevice:      document.getElementById('audioDevice').value,
       ttsVoice:         document.getElementById('ttsVoice').value,
+      ttsProvider:      document.getElementById('ttsProvider').value,
+      elevenLabsVoiceId: document.getElementById('elevenLabsVoiceId').value.trim(),
+      elevenLabsModel:  document.getElementById('elevenLabsModel').value || 'eleven_multilingual_v2',
+      azureSpeechRegion: document.getElementById('azureSpeechRegion').value.trim() || 'westeurope',
+      azureSpeechVoice: document.getElementById('azureSpeechVoice').value || 'de-DE-KatjaNeural',
       ttsReplacements:  collectReplacements(),
     });
     window.close();

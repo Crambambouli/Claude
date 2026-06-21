@@ -2,6 +2,7 @@
 
 export type Mode      = 'Normal' | 'Plus' | 'Rage' | 'Emoji';
 export type AppState  = 'idle' | 'recording' | 'processing';
+export type TtsProvider = 'local' | 'azure' | 'elevenlabs';
 
 export interface Settings {
   /** Reserviert – wird von whisper.cpp nicht ausgewertet (Binary-Pfad ist fest). Leer lassen. */
@@ -20,16 +21,31 @@ export interface Settings {
   ttsReplacements: Record<string, string>;
   /** Name der SAPI-Stimme (leer = Systemstandard) */
   ttsVoice: string;
+  /** TTS-Anbieter: lokale Windows-Stimme oder Azure Speech */
+  ttsProvider: TtsProvider;
+  /** Azure Speech Region, z.B. "westeurope" oder "germanywestcentral" */
+  azureSpeechRegion: string;
+  /** Azure Neural Voice, z.B. "de-DE-KatjaNeural" */
+  azureSpeechVoice: string;
+  /** ElevenLabs Voice-ID */
+  elevenLabsVoiceId: string;
+  /** ElevenLabs Modell, z.B. "eleven_multilingual_v2" */
+  elevenLabsModel: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
   whisperPath:     '',
-  whisperModel:    'small',
+  whisperModel:    'medium',
   whisperLanguage: 'de',
   apiKey:          '',
   hotkey:          'Ctrl+F8',
   audioDevice:     '',
   ttsVoice:        '',
+  ttsProvider:     'local',
+  azureSpeechRegion: 'westeurope',
+  azureSpeechVoice:  'de-DE-KatjaNeural',
+  elevenLabsVoiceId: '',
+  elevenLabsModel:   'eleven_multilingual_v2',
   ttsReplacements: {
     Layer:    'Lejer',
     Layers:   'Lejerz',

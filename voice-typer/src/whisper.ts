@@ -220,6 +220,12 @@ export class WhisperService {
         '--host', '127.0.0.1',
         '-l', lang,
         '-t', '4',
+        '--beam-size', '5',
+        '--best-of', '5',
+        '--split-on-word',
+        '--suppress-nst',
+        '--prompt',
+        'Dies ist ein deutsches Diktat. Schreibe normale deutsche Wörter zusammen. Trenne keine Silben und keine Wortbestandteile mit Leerzeichen.',
       ];
 
       logger.info(`Starte whisper.cpp-Server: ${bin} ${args.join(' ')}`);

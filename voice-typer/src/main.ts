@@ -71,6 +71,17 @@ class VoiceTyper {
     this.tts         = new TtsManager();
     this.tts.setReplacements(s.ttsReplacements ?? {});
     this.tts.setVoice(s.ttsVoice ?? '');
+    this.tts.setProvider(s.ttsProvider ?? 'local');
+    this.tts.setAzureConfig({
+      key: process.env.AZURE_SPEECH_KEY ?? '',
+      region: s.azureSpeechRegion ?? 'westeurope',
+      voice: s.azureSpeechVoice ?? 'de-DE-KatjaNeural',
+    });
+    this.tts.setElevenLabsConfig({
+      key: process.env.ELEVENLABS_API_KEY ?? '',
+      voiceId: s.elevenLabsVoiceId ?? '',
+      model: s.elevenLabsModel ?? 'eleven_multilingual_v2',
+    });
     this.corrections = new CorrectionManager();
 
     globalShortcut.register('Ctrl+F9', () => {
@@ -143,6 +154,29 @@ class VoiceTyper {
       if (partial.ttsVoice !== undefined) {
         this.tts.setVoice(next.ttsVoice);
       }
+      if (partial.ttsProvider !== undefined) {
+        this.tts.setProvider(next.ttsProvider);
+      }
+      if (
+        partial.azureSpeechRegion !== undefined ||
+        partial.azureSpeechVoice !== undefined
+      ) {
+        this.tts.setAzureConfig({
+          key: process.env.AZURE_SPEECH_KEY ?? '',
+          region: next.azureSpeechRegion,
+          voice: next.azureSpeechVoice,
+        });
+      }
+      if (
+        partial.elevenLabsVoiceId !== undefined ||
+        partial.elevenLabsModel !== undefined
+      ) {
+        this.tts.setElevenLabsConfig({
+          key: process.env.ELEVENLABS_API_KEY ?? '',
+          voiceId: next.elevenLabsVoiceId,
+          model: next.elevenLabsModel,
+        });
+      }
       logger.info('Settings vom Settings-Fenster übernommen.');
     });
 
@@ -184,6 +218,7 @@ class VoiceTyper {
     try {
       this.setState('recording');
       this.recorder.playBeep(880, 80);
+      await delay(120);
       await this.recorder.start(this.settings.get('audioDevice') || undefined);
     } catch (err) {
       logger.error('Aufnahme konnte nicht gestartet werden.', err);
@@ -193,10 +228,10 @@ class VoiceTyper {
   }
 
   private async stopAndProcess(): Promise<void> {
-    this.recorder.playBeep(440, 80);
     this.setState('processing');
     try {
       const audio = await this.recorder.stop();
+      this.recorder.playBeep(440, 80);
 
       if (audio.length < 2000) {
         logger.warn('Audio-Buffer zu klein – keine Transkription.');
@@ -390,6 +425,10 @@ class CorrectionWindow {
 }
 
 // ─── Hilfsfunktion ──────────────────────────────────────────────────────────
+
+function delay(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
 
 function findRendererFile(filename: string): string {
   const candidates = [
