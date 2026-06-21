@@ -5,7 +5,7 @@ import { DEFAULT_SETTINGS, Settings } from './types';
 import { logger } from './logger';
 
 /** Aktuelle Config-Schema-Version (steuert einmalige Default-Migrationen). */
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 export class SettingsManager {
   private data: Settings = { ...DEFAULT_SETTINGS };
@@ -68,6 +68,23 @@ export class SettingsManager {
         if ((parsed._schemaVersion ?? 0) < 4) {
           this.data.elevenLabsVoiceId = this.data.elevenLabsVoiceId || DEFAULT_SETTINGS.elevenLabsVoiceId;
           this.data.elevenLabsModel = this.data.elevenLabsModel || DEFAULT_SETTINGS.elevenLabsModel;
+        }
+
+        // Migration alter Feldnamen (vor einheitlichem Schema)
+        if ((parsed._schemaVersion ?? 0) < 5) {
+          const p = parsed as Record<string, unknown>;
+          if (typeof p['ttsEngine'] === 'string' && p['ttsEngine']) {
+            this.data.ttsProvider = p['ttsEngine'] as import('./types').TtsProvider;
+          }
+          if (typeof p['ttsElevenLabsApiKey'] === 'string' && p['ttsElevenLabsApiKey']) {
+            this.data.elevenLabsApiKey = p['ttsElevenLabsApiKey'];
+          }
+          if (typeof p['ttsElevenLabsVoiceId'] === 'string' && p['ttsElevenLabsVoiceId']) {
+            this.data.elevenLabsVoiceId = p['ttsElevenLabsVoiceId'];
+          }
+          if (typeof p['ttsElevenLabsModel'] === 'string' && p['ttsElevenLabsModel']) {
+            this.data.elevenLabsModel = p['ttsElevenLabsModel'];
+          }
         }
 
         this.save();

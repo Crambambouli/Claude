@@ -73,12 +73,12 @@ class VoiceTyper {
     this.tts.setVoice(s.ttsVoice ?? '');
     this.tts.setProvider(s.ttsProvider ?? 'local');
     this.tts.setAzureConfig({
-      key: process.env.AZURE_SPEECH_KEY ?? '',
+      key: s.azureSpeechKey || process.env.AZURE_SPEECH_KEY || '',
       region: s.azureSpeechRegion ?? 'westeurope',
       voice: s.azureSpeechVoice ?? 'de-DE-KatjaNeural',
     });
     this.tts.setElevenLabsConfig({
-      key: process.env.ELEVENLABS_API_KEY ?? '',
+      key: s.elevenLabsApiKey || process.env.ELEVENLABS_API_KEY || '',
       voiceId: s.elevenLabsVoiceId ?? '',
       model: s.elevenLabsModel ?? 'eleven_multilingual_v2',
     });
@@ -159,20 +159,22 @@ class VoiceTyper {
       }
       if (
         partial.azureSpeechRegion !== undefined ||
-        partial.azureSpeechVoice !== undefined
+        partial.azureSpeechVoice !== undefined ||
+        partial.azureSpeechKey !== undefined
       ) {
         this.tts.setAzureConfig({
-          key: process.env.AZURE_SPEECH_KEY ?? '',
+          key: next.azureSpeechKey || process.env.AZURE_SPEECH_KEY || '',
           region: next.azureSpeechRegion,
           voice: next.azureSpeechVoice,
         });
       }
       if (
         partial.elevenLabsVoiceId !== undefined ||
-        partial.elevenLabsModel !== undefined
+        partial.elevenLabsModel !== undefined ||
+        partial.elevenLabsApiKey !== undefined
       ) {
         this.tts.setElevenLabsConfig({
-          key: process.env.ELEVENLABS_API_KEY ?? '',
+          key: next.elevenLabsApiKey || process.env.ELEVENLABS_API_KEY || '',
           voiceId: next.elevenLabsVoiceId,
           model: next.elevenLabsModel,
         });

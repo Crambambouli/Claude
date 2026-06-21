@@ -31,6 +31,10 @@ export interface Settings {
   elevenLabsVoiceId: string;
   /** ElevenLabs Modell, z.B. "eleven_multilingual_v2" */
   elevenLabsModel: string;
+  /** ElevenLabs API-Key (wird lokal gespeichert) */
+  elevenLabsApiKey: string;
+  /** Azure Speech API-Key (wird lokal gespeichert) */
+  azureSpeechKey: string;
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -46,6 +50,8 @@ export const DEFAULT_SETTINGS: Settings = {
   azureSpeechVoice:  'de-DE-KatjaNeural',
   elevenLabsVoiceId: '',
   elevenLabsModel:   'eleven_multilingual_v2',
+  elevenLabsApiKey:  '',
+  azureSpeechKey:    '',
   ttsReplacements: {
     Layer:    'Lejer',
     Layers:   'Lejerz',

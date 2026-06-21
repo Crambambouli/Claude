@@ -252,6 +252,10 @@
     </select>
     <div class="hint">Cloud-TTS verbraucht Kontingent. Keys werden nicht gespeichert: ELEVENLABS_API_KEY bzw. AZURE_SPEECH_KEY.</div>
   </div>
+  <div class="field" id="field-elevenLabsApiKey">
+    <label for="elevenLabsApiKey">ElevenLabs API-Key</label>
+    <input id="elevenLabsApiKey" type="password" placeholder="sk_...">
+  </div>
   <div class="field" id="field-elevenLabsVoiceId">
     <label for="elevenLabsVoiceId">ElevenLabs Voice-ID</label>
     <input id="elevenLabsVoiceId" type="text" placeholder="z.B. 21m00Tcm4TlvDq8ikWAM">
@@ -263,6 +267,11 @@
       <option value="eleven_turbo_v2_5">eleven_turbo_v2_5 (schneller)</option>
       <option value="eleven_flash_v2_5">eleven_flash_v2_5 (sehr schnell)</option>
     </select>
+  </div>
+  <div class="field" id="field-azureSpeechKey">
+    <label for="azureSpeechKey">Azure API-Key</label>
+    <input id="azureSpeechKey" type="password" placeholder="Azure Subscription Key">
+    <div class="hint">Zu finden im Azure-Portal unter "Keys and Endpoint".</div>
   </div>
   <div class="field" id="field-azureSpeechRegion">
     <label for="azureSpeechRegion">Azure Region</label>
@@ -318,8 +327,10 @@
     document.getElementById('audioDevice').value     = s.audioDevice     ?? '';
     document.getElementById('ttsVoice').value        = s.ttsVoice        ?? '';
     document.getElementById('ttsProvider').value     = s.ttsProvider     ?? 'local';
+    document.getElementById('elevenLabsApiKey').value  = s.elevenLabsApiKey  ?? '';
     document.getElementById('elevenLabsVoiceId').value = s.elevenLabsVoiceId ?? '';
     document.getElementById('elevenLabsModel').value   = s.elevenLabsModel   ?? 'eleven_multilingual_v2';
+    document.getElementById('azureSpeechKey').value    = s.azureSpeechKey    ?? '';
     document.getElementById('azureSpeechRegion').value = s.azureSpeechRegion ?? 'westeurope';
     document.getElementById('azureSpeechVoice').value  = s.azureSpeechVoice  ?? 'de-DE-KatjaNeural';
     buildReplacementRows(s.ttsReplacements ?? {});
@@ -328,8 +339,10 @@
 
   function updateTtsFields() {
     const p = document.getElementById('ttsProvider').value;
+    document.getElementById('field-elevenLabsApiKey').style.display  = p === 'elevenlabs' ? '' : 'none';
     document.getElementById('field-elevenLabsVoiceId').style.display = p === 'elevenlabs' ? '' : 'none';
     document.getElementById('field-elevenLabsModel').style.display   = p === 'elevenlabs' ? '' : 'none';
+    document.getElementById('field-azureSpeechKey').style.display    = p === 'azure'      ? '' : 'none';
     document.getElementById('field-azureSpeechRegion').style.display = p === 'azure'      ? '' : 'none';
     document.getElementById('field-azureSpeechVoice').style.display  = p === 'azure'      ? '' : 'none';
     document.getElementById('field-ttsVoice').style.display          = p === 'local'      ? '' : 'none';
@@ -414,11 +427,13 @@
       hotkey:           document.getElementById('hotkey').value.trim() || 'Ctrl+F8',
       audioDevice:      document.getElementById('audioDevice').value,
       ttsVoice:         document.getElementById('ttsVoice').value,
-      ttsProvider:      document.getElementById('ttsProvider').value,
+      ttsProvider:       document.getElementById('ttsProvider').value,
+      elevenLabsApiKey:  document.getElementById('elevenLabsApiKey').value.trim(),
       elevenLabsVoiceId: document.getElementById('elevenLabsVoiceId').value.trim(),
-      elevenLabsModel:  document.getElementById('elevenLabsModel').value || 'eleven_multilingual_v2',
+      elevenLabsModel:   document.getElementById('elevenLabsModel').value || 'eleven_multilingual_v2',
+      azureSpeechKey:    document.getElementById('azureSpeechKey').value.trim(),
       azureSpeechRegion: document.getElementById('azureSpeechRegion').value.trim() || 'westeurope',
-      azureSpeechVoice: document.getElementById('azureSpeechVoice').value || 'de-DE-KatjaNeural',
+      azureSpeechVoice:  document.getElementById('azureSpeechVoice').value || 'de-DE-KatjaNeural',
       ttsReplacements:  collectReplacements(),
     });
     window.close();
