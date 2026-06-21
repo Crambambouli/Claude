@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, screen } from 'electron';
+import { BrowserWindow, ipcMain, screen, app } from 'electron';
 import * as path from 'path';
 import * as fs   from 'fs';
 import { AppState, Mode } from './types';
@@ -16,28 +16,56 @@ interface OverlayCallbacks {
 }
 
 export class OverlayManager {
-  private win:       BrowserWindow | null = null;
-  private callbacks!: OverlayCallbacks;
-  private ipcBound  = false;
-  private isCompact = false;
+  private win:          BrowserWindow | null = null;
+  private callbacks!:   OverlayCallbacks;
+  private ipcBound    = false;
+  private isCompact   = false;
   private readonly FULL_HEIGHT = 270;
-  // workArea wird einmalig gecacht (ändert sich nur bei Monitor-Änderungen)
-  private workArea  = screen.getPrimaryDisplay().workArea;
+  private workArea    = screen.getPrimaryDisplay().workArea;
+  private positionPath = '';
 
   init(callbacks: OverlayCallbacks): void {
+    this.positionPath = path.join(app.getPath('userData'), 'overlay-position.json');
     this.callbacks = callbacks;
     this.createWindow();
     this.bindIPC();
   }
 
+  private loadSavedPosition(): { x: number; y: number } | null {
+    try {
+      if (fs.existsSync(this.positionPath)) {
+        const data = JSON.parse(fs.readFileSync(this.positionPath, 'utf8')) as { x: unknown; y: unknown };
+        if (typeof data.x === 'number' && typeof data.y === 'number') {
+          // Sicherstellen dass die Position noch auf einem vorhandenen Monitor liegt
+          const display = screen.getDisplayNearestPoint({ x: data.x, y: data.y });
+          const wa = display.workArea;
+          if (data.x >= wa.x && data.x < wa.x + wa.width &&
+              data.y >= wa.y && data.y < wa.y + wa.height) {
+            return { x: data.x, y: data.y };
+          }
+        }
+      }
+    } catch { /* ignore */ }
+    return null;
+  }
+
+  private savePosition(x: number, y: number): void {
+    try {
+      fs.writeFileSync(this.positionPath, JSON.stringify({ x, y }), 'utf8');
+    } catch { /* ignore */ }
+  }
+
   private createWindow(): void {
     const { width, height } = screen.getPrimaryDisplay().workAreaSize;
+    const saved = this.loadSavedPosition();
+    const startX = saved ? saved.x : width  - 320;
+    const startY = saved ? saved.y : height - 260;
 
     this.win = new BrowserWindow({
       width:       300,
       height:      this.FULL_HEIGHT,
-      x:           width  - 320,
-      y:           height - 260,
+      x:           startX,
+      y:           startY,
       frame:       false,
       resizable:   false,
       alwaysOnTop: true,
@@ -115,6 +143,7 @@ export class OverlayManager {
       const nx = Math.max(wa.x, Math.min(x, wa.x + wa.width  - 300));
       const ny = Math.max(wa.y, Math.min(y, wa.y + wa.height - h));
       this.win.setPosition(nx, ny);
+      this.savePosition(nx, ny);
     });
 
     ipcMain.on('overlay-hide', () => this.win?.hide());
