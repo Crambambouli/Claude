@@ -31,7 +31,20 @@
     font-weight: 600;
     letter-spacing: 0.05em;
     color: #89b4fa;
+    display: flex;
+    align-items: center;
+    gap: 6px;
   }
+  .state-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    transition: background .3s, box-shadow .3s;
+  }
+  .state-dot.idle       { background: #a6e3a1; box-shadow: 0 0 5px #a6e3a1; }
+  .state-dot.recording  { background: #f38ba8; box-shadow: 0 0 8px #f38ba8;
+                          animation: pulse-red .9s ease-in-out infinite; }
+  .state-dot.processing { background: #f9e2af; box-shadow: 0 0 5px #f9e2af; }
   .title-bar .controls { display: flex; gap: 4px; }
   .title-bar .ctrl-btn {
     background: none; border: none;
@@ -213,7 +226,7 @@
 
 <!-- Titelleiste (Drag-Bereich) -->
 <div class="title-bar">
-  <span class="name">🎤 VOICE TYPER</span>
+  <span class="name"><span id="stateIndicator" class="state-dot idle"></span>🎤 VOICE TYPER</span>
   <div class="controls">
     <button class="ctrl-btn" id="minBtn" title="Kompakt / Vollbild" onclick="minimizeOverlay()">─</button>
     <button class="ctrl-btn" title="Einstellungen" onclick="openSettings()">⚙</button>
@@ -314,6 +327,7 @@ ipcRenderer.on('update-state', (_e, { state, mode, lastText }) => {
   statusLabel.className  = `status-label ${state}`;
   statusLabel.textContent = cfg.label;
   hintLabel.textContent   = cfg.hint;
+  document.getElementById('stateIndicator').className = `state-dot ${state}`;
 
   // Modus-Buttons synchronisieren
   document.querySelectorAll('.mode-btn').forEach(btn => {
