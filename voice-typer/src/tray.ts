@@ -118,6 +118,7 @@ export class TrayManager {
 
   private loadIcon(filename: string): Electron.NativeImage {
     const candidates = [
+      path.join(__dirname, '..', 'assets', 'icons', filename),
       path.join(app.getAppPath(), 'assets', 'icons', filename),
     ];
     for (const p of candidates) {
