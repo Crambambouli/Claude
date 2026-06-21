@@ -220,8 +220,6 @@ export class WhisperService {
         '--host', '127.0.0.1',
         '-l', lang,
         '-t', '4',
-        '--beam-size', '5',
-        '--best-of', '5',
         '--split-on-word',
         '--suppress-nst',
         '--prompt',
