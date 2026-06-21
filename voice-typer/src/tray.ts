@@ -7,9 +7,9 @@ import { logger } from './logger';
 const MODES: Mode[] = ['Normal', 'Plus', 'Rage', 'Emoji'];
 
 const STATE_LABEL: Record<AppState, string> = {
-  idle:       '● Bereit',
-  recording:  '● Aufnahme …',
-  processing: '● Verarbeitung …',
+  idle:       '🟢  Blitztext',
+  recording:  '🔴  Blitztext',
+  processing: '🟡  Blitztext',
 };
 
 const STATE_TOOLTIP: Record<AppState, string> = {
