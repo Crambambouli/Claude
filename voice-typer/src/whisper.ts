@@ -2,6 +2,7 @@ import { spawn, ChildProcess } from 'child_process';
 import * as http from 'http';
 import * as fs   from 'fs';
 import * as path from 'path';
+import * as os   from 'os';
 import { logger } from './logger';
 import { ModelManager } from './model-manager';
 
@@ -219,7 +220,7 @@ export class WhisperService {
         '--port', String(SERVER_PORT),
         '--host', '127.0.0.1',
         '-l', lang,
-        '-t', '4',
+        '-t', String(Math.max(4, os.cpus().length - 4)),
         '--split-on-word',
         '--suppress-nst',
         '--prompt',
