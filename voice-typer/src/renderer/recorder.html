@@ -35,8 +35,17 @@ ipcRenderer.on('start-recording', async (_e, deviceId) => {
   try {
     const constraints = {
       audio: deviceId
-        ? { deviceId: { exact: deviceId }, echoCancellation: false, noiseSuppression: false }
-        : { echoCancellation: false, noiseSuppression: false },
+        ? {
+            deviceId: { exact: deviceId },
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          }
+        : {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
       video: false,
     };
     micStream = await navigator.mediaDevices.getUserMedia(constraints);
