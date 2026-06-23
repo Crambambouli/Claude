@@ -14,6 +14,11 @@ export class AudioRecorder {
   private rejectStop:  ((err: Error) => void) | null  = null;
   private isRecording = false;
   private recorderHtmlPath = '';
+  private onAutoStop: ((buf: Buffer) => void) | null = null;
+
+  setAutoStopHandler(fn: (buf: Buffer) => void): void {
+    this.onAutoStop = fn;
+  }
 
   init(): void {
     // Pfad zur recorder.html (dist/renderer/ nach Build; src/renderer/ im Dev)
@@ -81,6 +86,9 @@ export class AudioRecorder {
         this.resolveStop(buf);
         this.resolveStop = null;
         this.rejectStop  = null;
+      } else if (this.isRecording && this.onAutoStop) {
+        // Renderer hat selbst gestoppt (MAX_DURATION / Stille-Timeout)
+        this.onAutoStop(buf);
       }
       this.isRecording = false;
     });

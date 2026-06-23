@@ -14,7 +14,7 @@ const { ipcRenderer } = require('electron');
 const SAMPLE_RATE       = 16000;   // Hz – optimal für Whisper
 const SILENCE_THRESHOLD = 0.007;   // RMS-Schwellwert
 const SILENCE_TIMEOUT   = 30_000;  // 30 s Stille → Auto-Stop
-const MAX_DURATION      = 120_000; // 2 min Maximal-Aufnahme
+const MAX_DURATION      = 300_000; // 5 min Maximal-Aufnahme
 
 let audioCtx       = null;
 let processor      = null;

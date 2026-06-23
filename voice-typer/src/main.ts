@@ -66,6 +66,12 @@ class VoiceTyper {
 
     this.recorder  = new AudioRecorder();
     this.recorder.init();
+    this.recorder.setAutoStopHandler((audio) => {
+      logger.info('Auto-Stop (MAX_DURATION / Stille): Starte Verarbeitung …');
+      this.setState('processing');
+      this.recorder.playBeep(440, 80);
+      void this.processAudio(audio);
+    });
 
     this.clipboard   = new ClipboardManager();
     this.tts         = new TtsManager();
@@ -231,13 +237,23 @@ class VoiceTyper {
 
   private async stopAndProcess(): Promise<void> {
     this.setState('processing');
+    let audio: Buffer;
     try {
-      const audio = await this.recorder.stop();
-      this.recorder.playBeep(440, 80);
+      audio = await this.recorder.stop();
+    } catch (err) {
+      logger.error('Verarbeitung fehlgeschlagen.', err);
+      this.notify('Fehler', String(err));
+      this.setState('idle');
+      return;
+    }
+    this.recorder.playBeep(440, 80);
+    await this.processAudio(audio);
+  }
 
+  private async processAudio(audio: Buffer): Promise<void> {
+    try {
       if (audio.length < 2000) {
         logger.warn('Audio-Buffer zu klein – keine Transkription.');
-        this.setState('idle');
         return;
       }
 
@@ -246,14 +262,12 @@ class VoiceTyper {
       logger.info(`Audio-RMS: ${rms.toFixed(4)}`);
       if (rms < 0.005) {
         logger.warn(`Audio zu leise (RMS ${rms.toFixed(4)}) – Transkription übersprungen.`);
-        this.setState('idle');
         return;
       }
 
       const transcript = await this.whisper.transcribe(audio);
       if (!transcript.trim()) {
         logger.info('Leeres Transkript – überspringe.');
-        this.setState('idle');
         return;
       }
 
@@ -261,7 +275,6 @@ class VoiceTyper {
       const cleaned = stripHallucinations(transcript);
       if (!cleaned) {
         logger.warn(`Nach Halluzinations-Filter leer, verwerfe: "${transcript.trim()}"`);
-        this.setState('idle');
         return;
       }
       if (cleaned !== transcript.trim()) {
