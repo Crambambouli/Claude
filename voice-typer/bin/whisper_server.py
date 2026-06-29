@@ -68,7 +68,9 @@ if DEVICE == "cuda":
                 _w.setframerate(16000)
                 _w.writeframes(b'\x00' * 16000)  # 0.5s Stille
             _tmp = _f.name
-        list(model.transcribe(_tmp, language='de', beam_size=1)[0])
+        # vad_filter=True mitwarmen: initialisiert silero-vad (sonst +50s beim ersten echten Request)
+        list(model.transcribe(_tmp, language='de', beam_size=1,
+                              vad_filter=True, condition_on_previous_text=False)[0])
         print("[fw-server] CUDA-Warmup abgeschlossen.", flush=True)
     except Exception as _e:
         print(f"[fw-server] CUDA-Warmup-Warnung: {_e}", flush=True)
@@ -146,6 +148,7 @@ class InferenceHandler(BaseHTTPRequestHandler):
                 language=effective_lang,
                 beam_size=1,
                 vad_filter=True,
+                condition_on_previous_text=False,
             )
             text = ' '.join(s.text for s in segments).strip()
             self._respond(200, {'text': text})
@@ -166,6 +169,7 @@ class InferenceHandler(BaseHTTPRequestHandler):
 
 
 if __name__ == '__main__':
-    server = HTTPServer(('127.0.0.1', PORT), InferenceHandler)
+    from http.server import ThreadingHTTPServer
+    server = ThreadingHTTPServer(('127.0.0.1', PORT), InferenceHandler)
     print(f'[fw-server] Lauscht auf 127.0.0.1:{PORT}', flush=True)
     server.serve_forever()

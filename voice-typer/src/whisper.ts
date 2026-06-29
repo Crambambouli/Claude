@@ -305,7 +305,7 @@ export class WhisperService {
     const body     = buildMultipart(boundary, audioBuffer, lang);
 
     const t0  = Date.now();
-    const raw = await httpPostMultipart(SERVER_PORT, '/inference', body, boundary, 60_000);
+    const raw = await httpPostMultipart(SERVER_PORT, '/inference', body, boundary, 120_000);
     const ms  = Date.now() - t0;
 
     const json = JSON.parse(raw) as { text?: string; error?: string };
