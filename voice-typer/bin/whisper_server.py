@@ -143,12 +143,19 @@ class InferenceHandler(BaseHTTPRequestHandler):
                 tmp = f.name
 
             effective_lang = lang if lang and lang != 'auto' else 'de'
+            # initial_prompt: Whisper auf Befehlsstil einstimmen → reduziert "Ich"-Halluzination
+            _prompt = (
+                "Prüfe das bitte, erstelle einen Eintrag, öffne die Datei,"
+                " schreibe einen Text, mache einen Test, führe das Kommando aus,"
+                " zeige mir die Ergebnisse, analysiere den Code, gib mir eine Liste."
+            )
             segments, _ = model.transcribe(
                 tmp,
                 language=effective_lang,
                 beam_size=1,
                 vad_filter=True,
                 condition_on_previous_text=False,
+                initial_prompt=_prompt,
             )
             text = ' '.join(s.text for s in segments).strip()
             self._respond(200, {'text': text})

@@ -27,6 +27,8 @@ const HALLUCINATION_STRIPS: RegExp[] = [
 export function stripHallucinations(text: string): string {
   let r = text;
   for (const p of HALLUCINATION_STRIPS) r = r.replace(p, '');
+  // "Ich führe…" → "Führe…": halluziniertes Ich am Satzanfang vor Verb entfernen
+  r = r.replace(/^[Ii]ch ([a-zäöüß])/, (_, c) => (c as string).toUpperCase());
   return r.replace(/\n{2,}/g, '\n').trim();
 }
 
@@ -107,6 +109,13 @@ function httpPostMultipart(
 
 const SERVER_PORT    = 8765;
 const SERVER_STARTUP = 300_000; // ms – 5 min: CUDA-Warmup + PTX-JIT beim ersten Start
+
+// Fester Interpreter-Pfad statt PATH-Suche: verhindert Fehlgriff auf eine andere
+// Python-Installation ohne faster_whisper (z.B. wenn Python312 vor Python313 im PATH steht).
+const PYTHON_EXE_PINNED = 'C:\\Users\\Christian\\AppData\\Local\\Programs\\Python\\Python313\\python.exe';
+function resolvePythonExe(): string {
+  return fs.existsSync(PYTHON_EXE_PINNED) ? PYTHON_EXE_PINNED : 'python';
+}
 
 export class WhisperService {
   private language = 'de';
@@ -205,11 +214,12 @@ export class WhisperService {
 
       const lang    = this.language === 'auto' ? 'de' : this.language;
       const fwModel = 'large-v3';
-      const args    = [script, fwModel, lang, 'cuda'];
+      const args      = [script, fwModel, lang, 'cuda'];
+      const pythonExe = resolvePythonExe();
 
-      logger.info(`Starte faster-whisper-Server: python ${args.join(' ')}`);
+      logger.info(`Starte faster-whisper-Server: ${pythonExe} ${args.join(' ')}`);
 
-      const proc = spawn('python', args, {
+      const proc = spawn(pythonExe, args, {
         stdio:       ['ignore', 'pipe', 'pipe'],
         detached:    false,
         windowsHide: true,
