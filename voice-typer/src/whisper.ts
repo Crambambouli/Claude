@@ -17,6 +17,7 @@ const HALLUCINATION_STRIPS: RegExp[] = [
   /transcribed by[^\n]*/gi,
   /amara\.org[^\n]*/gi,
   /vielen dank f[üu]r (ihre|eure) aufmerksamkeit\.?/gi,
+  /\s*vielen dank\.?\s*$/gi, // Whisper halluziniert "Vielen Dank." bei Stille am Ende langer Aufnahmen
   /thank you for watching\.?/gi,
   /♪[^♪\n]*♪?/g,
   /\[musik\]/gi, /\[music\]/gi,
@@ -27,8 +28,6 @@ const HALLUCINATION_STRIPS: RegExp[] = [
 export function stripHallucinations(text: string): string {
   let r = text;
   for (const p of HALLUCINATION_STRIPS) r = r.replace(p, '');
-  // "Ich führe…" → "Führe…": halluziniertes Ich am Satzanfang vor Verb entfernen
-  r = r.replace(/^[Ii]ch ([a-zäöüß])/, (_, c) => (c as string).toUpperCase());
   return r.replace(/\n{2,}/g, '\n').trim();
 }
 
