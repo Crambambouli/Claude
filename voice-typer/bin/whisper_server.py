@@ -148,6 +148,7 @@ class InferenceHandler(BaseHTTPRequestHandler):
                 "Prüfe das bitte, erstelle einen Eintrag, öffne die Datei,"
                 " schreibe einen Text, mache einen Test, führe das Kommando aus,"
                 " zeige mir die Ergebnisse, analysiere den Code, gib mir eine Liste."
+                " Cadris, Cadris Mobil, Qwen, Ollama, Voice-Typer, Mandant."
             )
             segments, _ = model.transcribe(
                 tmp,
