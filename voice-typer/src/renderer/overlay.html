@@ -421,8 +421,20 @@ function pauseSpeak() {
     }
   });
 
-  document.addEventListener('mouseup', () => { dragging = false; });
+  document.addEventListener('mouseup', () => {
+    if (dragging) ipcRenderer.send('overlay-drag-end');
+    dragging = false;
+  });
 })();
+
+// ─── Diagnose Overlay-Einfrieren ────────────────────────────────────────────
+// Herzschlag: Hauptprozess fragt alle 60 s, Renderer antwortet.
+ipcRenderer.on('overlay-ping', () => ipcRenderer.send('overlay-pong'));
+// Jeder Mausklick, der den Renderer erreicht, wird im Log vermerkt.
+document.addEventListener('mousedown', e => {
+  const t = e.target.closest('button, .title-bar, [onclick]');
+  ipcRenderer.send('overlay-mouse-down', t ? (t.id || t.className || t.tagName) : e.target.tagName);
+}, true);
 </script>
 </body>
 </html>

@@ -1,4 +1,4 @@
-import { BrowserWindow, ipcMain, screen, app } from 'electron';
+import { BrowserWindow, ipcMain, screen, app, powerMonitor } from 'electron';
 import * as path from 'path';
 import * as fs   from 'fs';
 import { AppState, Mode } from './types';
@@ -23,12 +23,65 @@ export class OverlayManager {
   private readonly FULL_HEIGHT = 270;
   private workArea    = screen.getPrimaryDisplay().workArea;
   private positionPath = '';
+  // Diagnose Overlay-Einfrieren: Herzschlag-Prüfung des Renderers
+  private lastPongAt   = Date.now();
+  private heartbeatTimer: NodeJS.Timeout | null = null;
+  private rendererStuck = false;
 
   init(callbacks: OverlayCallbacks): void {
     this.positionPath = path.join(app.getPath('userData'), 'overlay-position.json');
     this.callbacks = callbacks;
     this.createWindow();
     this.bindIPC();
+    this.bindDiagnostics();
+  }
+
+  /**
+   * Gegenmaßnahme Overlay-Einfrieren: Maus-Weiterleitung und „immer im
+   * Vordergrund" erneut setzen. Wird bei Anzeigen, Statuswechsel, Aufwachen,
+   * Entsperren und Monitoränderungen aufgerufen. Ändert nichts am Fokus
+   * (focusable:false bleibt, damit Strg+V im Zielfenster landet).
+   */
+  private reassertInteractive(): void {
+    if (!this.win || this.win.isDestroyed()) return;
+    this.win.setIgnoreMouseEvents(false);
+    this.win.setAlwaysOnTop(true);
+  }
+
+  private bindDiagnostics(): void {
+    const ev = (name: string) => () => {
+      logger.info(`Overlay-Diagnose: ${name}`);
+      this.reassertInteractive();
+    };
+    powerMonitor.on('suspend',       () => logger.info('Overlay-Diagnose: Ruhezustand beginnt'));
+    powerMonitor.on('resume',        ev('Aufgewacht aus Ruhezustand'));
+    powerMonitor.on('lock-screen',   () => logger.info('Overlay-Diagnose: Bildschirm gesperrt'));
+    powerMonitor.on('unlock-screen', ev('Bildschirm entsperrt'));
+    screen.on('display-added',       ev('Monitor hinzugefügt'));
+    screen.on('display-removed',     ev('Monitor entfernt'));
+
+    // Herzschlag: alle 60 s prüfen, ob der Overlay-Renderer noch antwortet.
+    // Geloggt wird nur bei Ausfall und bei Wiederkehr.
+    ipcMain.on('overlay-mouse-down', (_e, target: string) =>
+      logger.info(`Overlay-Diagnose: Klick angekommen (${String(target).slice(0, 40)})`));
+
+    ipcMain.on('overlay-pong', () => {
+      this.lastPongAt = Date.now();
+      if (this.rendererStuck) {
+        this.rendererStuck = false;
+        logger.info('Overlay-Diagnose: Renderer antwortet wieder');
+      }
+    });
+    this.heartbeatTimer = setInterval(() => {
+      if (!this.win || this.win.isDestroyed()) return;
+      const silentMs = Date.now() - this.lastPongAt;
+      if (silentMs > 90_000 && !this.rendererStuck) {
+        this.rendererStuck = true;
+        logger.warn(`Overlay-Diagnose: Renderer antwortet seit ${Math.round(silentMs / 1000)} s nicht ` +
+          `(sichtbar=${this.win.isVisible()}, vordergrund=${this.win.isAlwaysOnTop()})`);
+      }
+      this.win.webContents.send('overlay-ping');
+    }, 60_000);
   }
 
   private loadSavedPosition(): { x: number; y: number } | null {
@@ -83,6 +136,10 @@ export class OverlayManager {
 
     this.win.webContents.on('render-process-gone', (_e, details) =>
       logger.error(`Overlay: Renderer abgestürzt – ${details.reason}`));
+    this.win.on('unresponsive', () => logger.warn('Overlay-Diagnose: Fenster reagiert nicht (unresponsive)'));
+    this.win.on('responsive',   () => logger.info('Overlay-Diagnose: Fenster reagiert wieder (responsive)'));
+    this.win.on('always-on-top-changed', (_e, isOnTop) =>
+      logger.info(`Overlay-Diagnose: immer-im-Vordergrund geändert → ${isOnTop}`));
 
     // Electron-Bug auf Windows: focusable:false kann intern MA_NOACTIVATEANDEAT
     // setzen, wodurch Maus-Clicks den Renderer nie erreichen.
@@ -96,6 +153,7 @@ export class OverlayManager {
 
   update(state: AppState, mode: Mode, lastText: string): void {
     if (!this.win || this.win.isDestroyed()) return;
+    this.reassertInteractive();
     this.win.webContents.send('update-state', { state, mode, lastText });
   }
 
@@ -107,7 +165,7 @@ export class OverlayManager {
   toggle(): void {
     if (!this.win || this.win.isDestroyed()) { this.createWindow(); return; }
     if (this.win.isVisible()) this.win.hide();
-    else                      this.win.show();
+    else                      { this.win.show(); this.reassertInteractive(); }
   }
 
   isVisible(): boolean {
@@ -115,6 +173,7 @@ export class OverlayManager {
   }
 
   destroy(): void {
+    if (this.heartbeatTimer) { clearInterval(this.heartbeatTimer); this.heartbeatTimer = null; }
     this.win?.destroy();
     this.win = null;
   }
@@ -143,7 +202,13 @@ export class OverlayManager {
       const nx = Math.max(wa.x, Math.min(x, wa.x + wa.width  - 300));
       const ny = Math.max(wa.y, Math.min(y, wa.y + wa.height - h));
       this.win.setPosition(nx, ny);
-      this.savePosition(nx, ny);
+    });
+
+    // Position erst beim Loslassen der Maus speichern (nicht bei jedem Bild)
+    ipcMain.on('overlay-drag-end', () => {
+      if (!this.win || this.win.isDestroyed()) return;
+      const [x, y] = this.win.getPosition();
+      this.savePosition(x, y);
     });
 
     ipcMain.on('overlay-hide', () => this.win?.hide());
@@ -154,6 +219,7 @@ export class OverlayManager {
       this.win.setResizable(true);
       this.win.setSize(300, this.isCompact ? 32 : this.FULL_HEIGHT);
       this.win.setResizable(false);
+      this.reassertInteractive();
       this.win.webContents.send('overlay-compact', this.isCompact);
     });
     ipcMain.on('overlay-pause-speak',  () => this.callbacks.onPauseSpeak());
