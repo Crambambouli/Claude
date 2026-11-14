@@ -92,6 +92,7 @@
     }
     .app-card .info h3 { font-size: 17px; font-weight: 700; color: #fff; margin-bottom: 4px; }
     .app-card .info p  { font-size: 13px; color: var(--muted); line-height: 1.5; margin-bottom: 10px; }
+    .app-card .info p.req { color: #ffcc80; background: rgba(255,183,77,0.08); border: 1px solid rgba(255,183,77,0.25); border-radius: 8px; padding: 6px 10px; }
     .badges { display: flex; gap: 6px; flex-wrap: wrap; }
     .badge { font-size: 11px; font-weight: 600; padding: 3px 8px; border-radius: 20px; letter-spacing: 0.3px; }
     .badge.android  { background: rgba(61,220,132,0.15); color: var(--android); border: 1px solid rgba(61,220,132,0.25); }
@@ -278,7 +279,8 @@ const APPS = [
     id:          'blitztext',
     name:        'Blitztext',
     icon:        '⚡',
-    description: 'Sprache blitzschnell in Text umwandeln. F8 drücken, sprechen, fertig – mit lokalem Whisper STT und Claude KI-Modi.',
+    description: 'Sprache blitzschnell in Text umwandeln. Strg+F8 drücken, sprechen, fertig – mit lokalem Whisper STT und Claude KI-Modi.',
+    requirements: '⚠ Voraussetzungen: NVIDIA-Grafikkarte mit aktuellem Treiber und Python 3.13 mit dem Paket faster-whisper (pip install faster-whisper). Ohne diese startet die App, erkennt aber keine Sprache.',
     category:    'Windows',
     file:        'blitztext-setup.exe',
     type:        'windows',
@@ -312,6 +314,7 @@ function appCard(app) {
     <div class="info">
       <h3>${app.name}</h3>
       <p>${app.description}</p>
+      ${app.requirements ? `<p class="req">${app.requirements}</p>` : ''}
       <div class="badges">
         <span class="badge ${app.type}">${app.category}</span>
         <span class="badge size" id="size-${app.id}">…</span>
