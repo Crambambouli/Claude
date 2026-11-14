@@ -40,7 +40,7 @@
       "package.json"
     ],
     "extraResources": [
-      { "from": "bin/whisper-server.exe", "to": "." }
+      { "from": "bin/whisper_server.py", "to": "." }
     ],
     "win": {
       "target": [{ "target": "nsis", "arch": ["x64"] }],

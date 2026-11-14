@@ -13,8 +13,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-        with:
-          ref: claude/electron-voice-app-KdI1i
 
       - name: Set up Node.js
         uses: actions/setup-node@v4
@@ -38,7 +36,7 @@ jobs:
           chmod 600 /tmp/deploy_key
 
           SCP="scp -i /tmp/deploy_key -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
-          TARGET="deployer@46.225.83.170:/var/www/downloads"
+          TARGET="deployer@176.9.114.107:/var/www/downloads"
 
           # Installer finden (Ausgabe-Ordner: installer/)
           INSTALLER=$(find voice-typer/installer -name "*.exe" -not -name "*ninstall*" | head -1)
