@@ -55,9 +55,9 @@ jobs:
           $SCP /tmp/puzzle_android_version.json \
                $TARGET/puzzle_android_version.json
 
-          # Landing page deployen
-          $SCP server-setup/downloads-page/index.html \
-               $TARGET/index.html
+          # Landing page (index.html) wird NICHT mehr von hier hochgeladen:
+          # Quelle ist seit 16.11.2026 Cadris Mobil/cadris-zeit-app/seite/index.html
+          # (Upload nur mit Christians Ja). Sonst ueberschreibt jeder Push die Seite.
 
           rm -f /tmp/deploy_key
           echo "Deployed at $(date)"
