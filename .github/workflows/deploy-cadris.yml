@@ -1,0 +1,61 @@
+name: Deploy cadris.de
+
+on:
+  push:
+    branches:
+      - main
+      - "claude/cadris-landing-page-**"
+    paths:
+      - "cadris-landing/**"
+      - ".github/workflows/deploy-cadris.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cadris
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment: cadris-production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Load SSH key into agent
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.CADRIS_SSH_KEY }}
+
+      - name: Pin host fingerprint
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          ssh-keyscan -p "${CADRIS_SSH_PORT:-22}" -H "$CADRIS_SSH_HOST" >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+        env:
+          CADRIS_SSH_HOST: ${{ secrets.CADRIS_SSH_HOST }}
+          CADRIS_SSH_PORT: ${{ secrets.CADRIS_SSH_PORT }}
+
+      - name: Deploy via rsync
+        run: |
+          PORT="${CADRIS_SSH_PORT:-22}"
+          rsync -avz --human-readable \
+            -e "ssh -p ${PORT}" \
+            --exclude='.DS_Store' \
+            cadris-landing/ \
+            "${CADRIS_SSH_USER}@${CADRIS_SSH_HOST}:${CADRIS_WEBROOT}/"
+        env:
+          CADRIS_SSH_HOST: ${{ secrets.CADRIS_SSH_HOST }}
+          CADRIS_SSH_PORT: ${{ secrets.CADRIS_SSH_PORT }}
+          CADRIS_SSH_USER: ${{ secrets.CADRIS_SSH_USER }}
+          CADRIS_WEBROOT: ${{ secrets.CADRIS_WEBROOT }}
+
+      - name: Smoke-Test (HTTP)
+        run: |
+          code=$(curl -sS -o /dev/null -w "%{http_code}" --max-time 15 https://cadris.de/ || echo "000")
+          echo "cadris.de antwortete mit HTTP $code"
+          if [ "$code" != "200" ]; then
+            echo "::warning::cadris.de antwortet nicht mit 200 — bitte manuell prüfen."
+          fi
